@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app2/viewModel/capture_photo.dart';
+import 'package:my_app2/viewModel/camera_viewmodel.dart';
 
 class CameraScreen extends StatelessWidget {
   const CameraScreen({super.key});
@@ -9,72 +9,85 @@ class CameraScreen extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(),
-
-        body: Container(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Align(
-                alignment: Alignment.bottomCenter,
-                // capture button
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-
-                  child: FloatingActionButton(
-                    elevation: 0,
-
-                    onPressed: () {
-                      CapturePhoto.capturePhoto();
-                    },
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF3c096c),
-                    child: Icon(Icons.image),
-                  ),
-                ),
-              ),
-
-              Align(
-                alignment: Alignment.bottomCenter,
-                // capture button
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: FloatingActionButton(
-                    elevation: 0,
-
-                    onPressed: () {
-                      CapturePhoto.capturePhoto();
-                    },
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF3c096c),
-                    shape: const CircleBorder(
-                      side: BorderSide(
-                        color: Color.fromARGB(255, 245, 246, 247),
-                      ),
+        body: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                // Column-1
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingActionButton(
+                      elevation: 0,
+                      onPressed: () {
+                        // CapturePhoto.capturePhoto();
+                      },
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF3C096C),
+                      child: const Icon(Icons.image),
                     ),
-                    child: Icon(Icons.camera),
-                  ),
+                    const SizedBox(height: 8),
+                    const Text("Gallery"),
+                  ],
                 ),
               ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                // capture button
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: FloatingActionButton(
-                    elevation: 0,
-
-                    onPressed: () {
-                      CapturePhoto.capturePhoto();
-                    },
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF3c096c),
-
-                    child: Icon(Icons.location_on),
-                  ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                // Column-2 (Camera)
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingActionButton(
+                      elevation: 0,
+                      onPressed: () {
+                        // CapturePhoto.capturePhoto();
+                      },
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF3C096C),
+                      shape: const CircleBorder(
+                        side: BorderSide(
+                          color: Color.fromARGB(255, 245, 246, 247),
+                        ),
+                      ),
+                      child: const Icon(Icons.camera_alt),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text("Camera"),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                // Column -3 Location
+                child: Column(
+                  // mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingActionButton(
+                      elevation: 0,
+                      onPressed: () {
+                        // CapturePhoto.capturePhoto();
+                      },
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF3C096C),
+                      child: const Icon(Icons.location_on),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text("Location"),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
