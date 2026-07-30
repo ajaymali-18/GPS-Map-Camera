@@ -1,44 +1,20 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-// import 'package:permission_handler/permission_handler.dart';
+import 'package:camera/camera.dart';
 
-class CameraViewmodel extends StatefulWidget {
-  const CameraViewmodel({super.key});
+class CameraViewModel {
+  // CameraController is a class provided by the Flutter camera package. An object of this class is responsible for controlling the camera.
+  //  ? means the variable is nullable.
+  CameraController? controller;
 
-  @override
-  State<CameraViewmodel> createState() => _CameraViewModelState();
-}
+  Future<void> initilizeCamera() async {
+    final cameras =
+        await availableCameras(); //available camera  means front camera & back camera
 
-class _CameraViewModelState extends State<CameraViewmodel> {
-  @override
-  void initState() {
-    super.initState();
-    requestStoragePermission();
+    controller = CameraController(cameras.first, ResolutionPreset.high);
+
+    await controller!.initialize();
   }
 
-  Future<void> requestStoragePermission() async {
-    // Check if the platform is not web
-    if (!kIsWeb) {
-      // Request storage permission
-      var status = await Permission.storage.status;
-      if (!status.isGranted) {
-        await Permission.storage.request();
-      }
-
-      // Request camera permission
-      var cameraStatus = await Permission.camera.status;
-      if (!cameraStatus.isGranted) {
-        await Permission.camera.request();
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Camera")),
-      body: const Center(child: Text("Camera Screen")),
-    );
+  void dispose() {
+    controller?.dispose();
   }
 }
