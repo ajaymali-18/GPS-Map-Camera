@@ -11,7 +11,7 @@ class CameraScreen extends StatefulWidget {
 
 class _CameraScreenState extends State<CameraScreen> {
   final CameraViewModel viewModel = CameraViewModel();
-
+  late XFile? imageFile;
   @override
   void initState() {
     super.initState();
@@ -37,7 +37,7 @@ class _CameraScreenState extends State<CameraScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      // backgroundColor: Colors.black,
       appBar: AppBar(),
 
       body: Stack(
@@ -74,7 +74,29 @@ class _CameraScreenState extends State<CameraScreen> {
                   children: [
                     FloatingActionButton(
                       elevation: 0,
-                      onPressed: () {},
+
+                      onPressed: () async {
+                        final XFile? image = await viewModel.capturePhoto();
+
+                        if (image != null) {
+                          await viewModel.saveCapturedImage(
+                            image.path,
+                          ); // <-- This line is required
+
+                          setState(() {
+                            imageFile = image;
+                          });
+
+                          // print("Image captured: ${image.path}");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Photo Saved in Device"),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF3C096C),
                       shape: const CircleBorder(
