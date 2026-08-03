@@ -9,14 +9,12 @@ class GalleryService {
     final bytes = await File(imagePath).readAsBytes();
     final file = File(imagePath); //file object
 
-
     final result = await SaverGallery.saveImage(
       bytes,
       fileName: "IMG_${DateTime.now().millisecondsSinceEpoch}",
       skipIfExists: false,
     );
 
-    // Save photo in app
     final appDir = await getApplicationDocumentsDirectory();
     final galleryDir = Directory("${appDir.path}/Gallery");
 
@@ -28,6 +26,4 @@ class GalleryService {
 
     await file.copy("${galleryDir.path}/$fileName");
   }
-
-  // debugPrint("Save Result: $result");
 }

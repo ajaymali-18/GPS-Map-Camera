@@ -13,7 +13,8 @@ class GalleryScreen extends StatefulWidget {
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
-  File? image;
+  // File? image; (for single image)
+  List<File> images = [];
 
   @override
   void initState() {
@@ -27,10 +28,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
     if (galleryDir.existsSync()) {
       final files = galleryDir.listSync().whereType<File>().toList();
-
+      // listSync()= will return all folder and files
       if (files.isNotEmpty) {
         setState(() {
-          image = files.first;
+          images = files;
         });
       }
     }
@@ -41,7 +42,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text("Gallery")),
       body: Center(
-        child: image == null ? const Text("No Image") : Image.file(image!),
+        child: images.isEmpty
+            ? const Text("No Images Found")
+            : Image.file(images.first, fit: BoxFit.contain),
       ),
     );
   }

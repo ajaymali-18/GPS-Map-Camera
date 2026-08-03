@@ -97,7 +97,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text("Photo Saved in Device"),
-                              duration: Duration(seconds: 2),
+                              duration: Duration(seconds: 1),
                             ),
                           );
                         }

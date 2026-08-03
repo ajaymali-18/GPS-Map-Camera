@@ -14,7 +14,7 @@ class CameraViewModel {
   //  ? means the variable is nullable.
   CameraController? controller;
 
-  // get SaverGallery => null;
+
 
   Future<void> initilizeCamera() async {
     final cameras =
@@ -22,7 +22,7 @@ class CameraViewModel {
 
     controller = CameraController(cameras.first, ResolutionPreset.high);
 
-    await controller!.initialize();
+    await controller!.initialize(); //controller is not null now
   }
 
   // Take Picture
