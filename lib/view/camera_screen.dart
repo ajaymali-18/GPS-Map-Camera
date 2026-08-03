@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:my_app2/view/gallery_screen.dart';
 import '../viewModel/camera_viewmodel.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -55,7 +56,14 @@ class _CameraScreenState extends State<CameraScreen> {
                   children: [
                     FloatingActionButton(
                       elevation: 0,
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const GalleryScreen(),
+                          ),
+                        );
+                      },
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF3C096C),
                       child: const Icon(Icons.image),
@@ -79,9 +87,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         final XFile? image = await viewModel.capturePhoto();
 
                         if (image != null) {
-                          await viewModel.saveCapturedImage(
-                            image.path,
-                          ); // <-- This line is required
+                          await viewModel.saveCapturedImage(image.path);
 
                           setState(() {
                             imageFile = image;
