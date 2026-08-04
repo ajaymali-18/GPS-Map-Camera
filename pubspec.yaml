@@ -42,6 +42,8 @@ dependencies:
   saver_gallery: ^5.1.0
   geolocator: ^14.0.3 #Get User lattitude & Longitude
   geocoding: ^4.0.0  #Convert coordinates to an address.
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
   
 
 dev_dependencies:
