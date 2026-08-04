@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import '../services/gallery_service.dart';
@@ -8,6 +8,10 @@ class CameraViewModel {
 
   Future<void> saveCapturedImage(String imagePath) async {
     await galleryService.saveImage(imagePath);
+  }
+
+  Future<void> saveImageBytes(Uint8List bytes) async {
+    await galleryService.saveImageBytes(bytes);
   }
 
   // CameraController is a class provided by the Flutter camera package. An object of this class is responsible for controlling the camera.

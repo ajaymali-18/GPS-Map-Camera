@@ -1,36 +1,43 @@
 import 'dart:io';
-// import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
-// import 'package:saver_gallery/saver_gallery.dart';
+import 'package:saver_gallery/saver_gallery.dart';
 
 class GalleryService {
   Future<void> saveImage(String imagePath) async {
-    // final bytes = await File(imagePath).readAsBytes();
-    final file = File(imagePath); //file object
-
-    // final result = await SaverGallery.saveImage(
-    //   bytes,
-    //   fileName: "IMG_${DateTime.now().millisecondsSinceEpoch}",
-    //   skipIfExists: false,
-    // );
-
-    final appDir = await getApplicationDocumentsDirectory();
-    final galleryDir = Directory("${appDir.path}/Gallery");
-
-    if (!galleryDir.existsSync()) {
-      galleryDir.createSync(recursive: true);
+    try {
+      final Uint8List bytes = await File(imagePath).readAsBytes();
+      await saveImageBytes(bytes);
+    } catch (e) {
+      debugPrint("Save Error: $e");
     }
+  }
 
-    final fileName = p.basename(imagePath);
+  Future<void> saveImageBytes(Uint8List bytes) async {
+    final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    try {
+      // Keep a private copy as well, because GalleryScreen reads this folder.
+      final appDirectory = await getApplicationDocumentsDirectory();
+      final galleryDirectory = Directory(path.join(appDirectory.path, 'Gallery'));
+      await galleryDirectory.create(recursive: true);
+      await File(path.join(galleryDirectory.path, fileName)).writeAsBytes(bytes);
 
-    await file.copy("${galleryDir.path}/$fileName");
+      final result = await SaverGallery.saveImage(
+        bytes,
+        fileName: fileName,
+        albumPath: 'GPS Camera',
+        skipIfExists: false,
+      );
 
-    // just added code
+      if (!result.isSuccess) {
+        throw StateError(result.errorMessage ?? 'The device gallery rejected the image.');
+      }
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+      debugPrint("Save Result: $result");
+    } catch (e) {
+      debugPrint("Save Error: $e");
+      rethrow;
+    }
   }
 }

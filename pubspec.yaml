@@ -44,6 +44,8 @@ dependencies:
   geocoding: ^4.0.0  #Convert coordinates to an address.
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
+  image: ^4.2.0
+  http: ^1.2.2
   
 
 dev_dependencies:
