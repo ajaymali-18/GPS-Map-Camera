@@ -1,15 +1,13 @@
-import 'dart:typed_data';
 import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-// import 'package:geolocator/geolocator.dart';
-// import 'package:geocoding/geocoding.dart';
 import 'package:my_app2/services/location_service.dart';
 import 'package:my_app2/view/gallery_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -35,6 +33,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     loadLocation();
 
@@ -45,9 +44,6 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  /// Creates a new JPEG whose pixels include the location information.
-  /// The widgets shown over CameraPreview are not part of camera's JPEG, so
-  /// drawing the text into the captured image is required before saving it.
   Future<Uint8List> _createStampedPhoto(
     XFile image,
     img.Image? mapSnapshot,
@@ -241,6 +237,47 @@ class _CameraScreenState extends State<CameraScreen> {
     return wrappedLines;
   }
 
+  String _countryFlag(String? countryCode) {
+    if (countryCode == null || countryCode.length != 2) return '';
+
+    final code = countryCode.toUpperCase();
+    return String.fromCharCodes(
+      code.codeUnits.map((letter) => 0x1F1E6 + letter - 0x41),
+    );
+  }
+
+  String _formattedDateTime(DateTime value) {
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+    final minute = value.minute.toString().padLeft(2, '0');
+    final period = value.hour >= 12 ? 'PM' : 'AM';
+
+    return '${weekdays[value.weekday - 1]}, ${value.day} '
+        '${months[value.month - 1]} ${value.year}, $hour:$minute $period';
+  }
+
   Future<void> loadLocation() async {
     try {
       Position currentPosition = await locationService.getCurrentLocation();
@@ -268,6 +305,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     viewModel.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
@@ -279,21 +317,16 @@ class _CameraScreenState extends State<CameraScreen> {
     }
 
     return Scaffold(
-      // backgroundColor: Colors.black,
-      appBar: AppBar(),
-
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Center(
-            child: AspectRatio(
-              aspectRatio: viewModel.controller!.value.aspectRatio,
-              child: CameraPreview(viewModel.controller!),
-            ),
-          ),
+          // Native-camera style preview: it fills the complete portrait
+          // screen, including the space previously occupied by the AppBar.
+          Positioned.fill(child: CameraPreview(viewModel.controller!)),
 
           // Map ---
           Positioned(
-            bottom: 140,
+            top: 600,
             left: 12,
             right: 12,
 
@@ -361,12 +394,11 @@ class _CameraScreenState extends State<CameraScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "City : ${placemark?.locality ?? '--'},${placemark?.administrativeArea ?? '--'}, ${placemark?.country ?? '--'}",
+                          "${placemark?.locality ?? '--'}, ${placemark?.administrativeArea ?? '--'}, ${placemark?.country ?? '--'} ${_countryFlag(placemark?.isoCountryCode)}",
                           style: const TextStyle(color: Colors.white),
                         ),
 
                         Text(
-                          "Address : "
                           "${placemark?.street ?? ''}, "
                           "${placemark?.subLocality ?? ''}, "
                           "${placemark?.locality ?? ''}, "
@@ -390,7 +422,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         ),
 
                         Text(
-                          "Date & Time : ${DateTime.now()}",
+                          _formattedDateTime(DateTime.now()),
                           style: const TextStyle(color: Colors.white),
                         ),
                       ],

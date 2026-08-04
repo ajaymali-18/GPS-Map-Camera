@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ImagePreviewScreen extends StatelessWidget {
   final File image;
@@ -43,6 +44,13 @@ class ImagePreviewScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Preview"),
         backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Center(child: InteractiveViewer(child: Image.file(image))),
 

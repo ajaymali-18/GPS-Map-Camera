@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:my_app2/view/image_preview.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -17,6 +18,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     loadImage();
   }
 
@@ -26,6 +28,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
     if (galleryDir.existsSync()) {
       final files = galleryDir.listSync().whereType<File>().toList();
+      files.sort(
+        (newer, older) => older.lastModifiedSync().compareTo(
+          newer.lastModifiedSync(),
+        ),
+      );
 
       setState(() {
         images = files;
@@ -36,7 +43,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Gallery"), centerTitle: true),
+      appBar: AppBar(
+        title: const Text("Gallery"),
+        centerTitle: true,
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+      ),
       body: SafeArea(
         child: images.isEmpty
             ? const Center(

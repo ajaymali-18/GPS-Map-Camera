@@ -17,11 +17,15 @@ class GalleryService {
   Future<void> saveImageBytes(Uint8List bytes) async {
     final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}.jpg';
     try {
-      // Keep a private copy as well, because GalleryScreen reads this folder.
+    
       final appDirectory = await getApplicationDocumentsDirectory();
-      final galleryDirectory = Directory(path.join(appDirectory.path, 'Gallery'));
+      final galleryDirectory = Directory(
+        path.join(appDirectory.path, 'Gallery'),
+      );
       await galleryDirectory.create(recursive: true);
-      await File(path.join(galleryDirectory.path, fileName)).writeAsBytes(bytes);
+      await File(
+        path.join(galleryDirectory.path, fileName),
+      ).writeAsBytes(bytes);
 
       final result = await SaverGallery.saveImage(
         bytes,
@@ -31,7 +35,9 @@ class GalleryService {
       );
 
       if (!result.isSuccess) {
-        throw StateError(result.errorMessage ?? 'The device gallery rejected the image.');
+        throw StateError(
+          result.errorMessage ?? 'The device gallery rejected the image.',
+        );
       }
 
       debugPrint("Save Result: $result");
