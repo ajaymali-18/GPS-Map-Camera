@@ -10,7 +10,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:my_app2/services/location_service.dart';
 import 'package:my_app2/view/gallery_screen.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:my_app2/view/location_screen.dart';
 import 'package:http/http.dart' as http;
 import '../viewModel/camera_viewmodel.dart';
 
@@ -29,6 +29,8 @@ class _CameraScreenState extends State<CameraScreen> {
   final CameraViewModel viewModel = CameraViewModel();
   Position? position;
   Placemark? placemark;
+  String? _cameraError;
+  bool _isCapturing = false;
 
   @override
   void initState() {
@@ -36,12 +38,17 @@ class _CameraScreenState extends State<CameraScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     loadLocation();
+    _initializeCamera();
+  }
 
-    viewModel.initilizeCamera().then((_) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+  Future<void> _initializeCamera() async {
+    setState(() => _cameraError = null);
+    try {
+      await viewModel.initializeCamera();
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) setState(() => _cameraError = error.toString());
+    }
   }
 
   Future<Uint8List> _createStampedPhoto(
@@ -282,9 +289,6 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       Position currentPosition = await locationService.getCurrentLocation();
 
-      print("Latitude: ${currentPosition.latitude}");
-      print("Longitude: ${currentPosition.longitude}");
-
       Placemark currentPlacemark = await locationService.getAddress(
         currentPosition,
       );
@@ -295,10 +299,8 @@ class _CameraScreenState extends State<CameraScreen> {
         position = currentPosition;
         placemark = currentPlacemark;
       });
-
-      print("UI Updated");
-    } catch (e) {
-      print("Location Error: $e");
+    } catch (error) {
+      debugPrint('Location error: $error');
     }
   }
 
@@ -311,6 +313,28 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_cameraError != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.camera_alt_outlined, size: 48),
+                const SizedBox(height: 12),
+                Text(_cameraError!, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _initializeCamera,
+                  child: const Text('Retry camera'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     if (viewModel.controller == null ||
         !viewModel.controller!.value.isInitialized) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -326,7 +350,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
           // Map ---
           Positioned(
-            top: 600,
+            bottom: 150,
             left: 12,
             right: 12,
 
@@ -352,6 +376,9 @@ class _CameraScreenState extends State<CameraScreen> {
                                   position!.longitude,
                                 ),
                                 initialZoom: 14,
+                                interactionOptions: const InteractionOptions(
+                                  flags: InteractiveFlag.none,
+                                ),
                               ),
                               children: [
                                 TileLayer(
@@ -410,6 +437,7 @@ class _CameraScreenState extends State<CameraScreen> {
                             fontSize: 12,
                           ),
                           maxLines: 5,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           "Latitude : ${position?.latitude ?? '--'}°",
@@ -435,104 +463,143 @@ class _CameraScreenState extends State<CameraScreen> {
 
           Align(
             alignment: Alignment.bottomCenter,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                // Gallery
-                Column(
-                  mainAxisSize: MainAxisSize.min,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    FloatingActionButton(
-                      elevation: 0,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const GalleryScreen(),
+                    // Gallery
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FloatingActionButton(
+                          elevation: 0,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const GalleryScreen(),
+                              ),
+                            );
+                          },
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF3C096C),
+                          child: const Icon(Icons.image),
+                        ),
+                      ],
+                    ),
+
+                    // Camera
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FloatingActionButton(
+                          elevation: 0,
+
+                          onPressed: _isCapturing
+                              ? null
+                              : () async {
+                                  final XFile? image = await viewModel
+                                      .capturePhoto();
+
+                                  if (image == null) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(
+                                      this.context,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Could not capture photo',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setState(() => _isCapturing = true);
+                                  var didSave = false;
+                                  try {
+                                    final mapSnapshot =
+                                        await _createMapSnapshot();
+                                    final stampedPhoto =
+                                        await _createStampedPhoto(
+                                          image,
+                                          mapSnapshot,
+                                        );
+                                    await viewModel.saveImageBytes(
+                                      stampedPhoto,
+                                    );
+                                    didSave = true;
+                                  } catch (error) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        this.context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Could not save photo: $error',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => _isCapturing = false);
+                                    }
+                                  }
+
+                                  if (!mounted || !didSave) return;
+
+                                  ScaffoldMessenger.of(
+                                    this.context,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Photo saved successfully'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF3C096C),
+                          shape: const CircleBorder(
+                            side: BorderSide(color: Colors.white),
                           ),
-                        );
-                      },
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF3C096C),
-                      child: const Icon(Icons.image),
+                          child: const Icon(Icons.camera_alt),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Gallery",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
 
-                // Camera
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FloatingActionButton(
-                      elevation: 0,
-
-                      onPressed: () async {
-                        final XFile? image = await viewModel.capturePhoto();
-
-                        if (image == null) return;
-
-                        try {
-                          await Permission.photos.request();
-                          await Permission.storage.request();
-                          final mapSnapshot = await _createMapSnapshot();
-                          final stampedPhoto = await _createStampedPhoto(
-                            image,
-                            mapSnapshot,
-                          );
-                          await viewModel.saveImageBytes(stampedPhoto);
-                        } catch (error) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(this.context).showSnackBar(
-                            SnackBar(
-                              content: Text('Could not save photo: $error'),
-                            ),
-                          );
-                          return;
-                        }
-
-                        if (!mounted) return;
-
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(content: Text("Stamped photo saved")),
-                        );
-                      },
-
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF3C096C),
-                      shape: const CircleBorder(
-                        side: BorderSide(color: Colors.white),
-                      ),
-                      child: const Icon(Icons.camera_alt),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text("Camera", style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-
-                // Location
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FloatingActionButton(
-                      elevation: 0,
-                      onPressed: () {},
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF3C096C),
-                      child: const Icon(Icons.location_on),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Location",
-                      style: TextStyle(color: Colors.white),
+                    // Location
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FloatingActionButton(
+                          elevation: 0,
+                          onPressed: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const LocationScreen(),
+                              ),
+                            );
+                            if (mounted) {
+                              SystemChrome.setEnabledSystemUIMode(
+                                SystemUiMode.immersiveSticky,
+                              );
+                            }
+                          },
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF3C096C),
+                          child: const Icon(Icons.location_on),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ],

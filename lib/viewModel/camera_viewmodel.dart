@@ -6,30 +6,30 @@ import '../services/gallery_service.dart';
 class CameraViewModel {
   final GalleryService galleryService = GalleryService();
 
-  Future<void> saveCapturedImage(String imagePath) async {
-    await galleryService.saveImage(imagePath);
-  }
-
   Future<void> saveImageBytes(Uint8List bytes) async {
     await galleryService.saveImageBytes(bytes);
   }
 
-  // CameraController is a class provided by the Flutter camera package. An object of this class is responsible for controlling the camera.
-  //  ? means the variable is nullable.
   CameraController? controller;
 
+  Future<void> initializeCamera() async {
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) {
+      throw StateError('No camera is available on this device.');
+    }
 
+    final backCamera = cameras.firstWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.back,
+      orElse: () => cameras.first,
+    );
+    controller = CameraController(
+      backCamera,
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
 
-  Future<void> initilizeCamera() async {
-    final cameras =
-        await availableCameras(); //available camera  means front camera & back camera
-
-    controller = CameraController(cameras.first, ResolutionPreset.high);
-
-    await controller!.initialize(); //controller is not null now
+    await controller!.initialize();
   }
-
-  // Take Picture
 
   void dispose() {
     controller?.dispose();
@@ -42,8 +42,7 @@ class CameraViewModel {
 
     try {
       return await controller!.takePicture();
-    } catch (e) {
-      print(e);
+    } catch (_) {
       return null;
     }
   }

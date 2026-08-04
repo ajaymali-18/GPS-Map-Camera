@@ -1,23 +1,14 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 
 class GalleryService {
-  Future<void> saveImage(String imagePath) async {
-    try {
-      final Uint8List bytes = await File(imagePath).readAsBytes();
-      await saveImageBytes(bytes);
-    } catch (e) {
-      debugPrint("Save Error: $e");
-    }
-  }
-
   Future<void> saveImageBytes(Uint8List bytes) async {
     final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}.jpg';
     try {
-    
       final appDirectory = await getApplicationDocumentsDirectory();
       final galleryDirectory = Directory(
         path.join(appDirectory.path, 'Gallery'),

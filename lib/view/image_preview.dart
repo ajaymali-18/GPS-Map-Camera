@@ -26,15 +26,15 @@ class ImagePreviewScreen extends StatelessWidget {
       ),
     );
 
-    if (confirm == true) {
-      await image.delete();
+    if (confirm != true) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Image deleted successfully")),
-      );
+    await image.delete();
+    if (!context.mounted) return;
 
-      Navigator.pop(context, true); // Return to gallery
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Image deleted successfully")),
+    );
+    Navigator.pop(context, true);
   }
 
   @override

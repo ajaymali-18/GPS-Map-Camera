@@ -25,6 +25,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   Future<void> loadImage() async {
     final appDir = await getApplicationDocumentsDirectory();
     final galleryDir = Directory("${appDir.path}/Gallery");
+    if (!mounted) return;
 
     if (galleryDir.existsSync()) {
       final files = galleryDir.listSync().whereType<File>().toList();
@@ -36,6 +37,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
       setState(() {
         images = files;
+      });
+    } else {
+      setState(() {
+        images = [];
       });
     }
   }
