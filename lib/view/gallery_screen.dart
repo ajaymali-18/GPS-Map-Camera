@@ -39,12 +39,22 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Gallery")),
-      body: Center(
-        child: images.isEmpty
-            ? const Text("No Images Found")
-            : Image.file(images.first, fit: BoxFit.contain),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: const Text("Gallery")),
+        body: GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3, // Number of columns
+            mainAxisSpacing: 5.0,
+            crossAxisSpacing: 5.0,
+            childAspectRatio: 0.75, // Adjusts tile shape
+          ),
+
+          itemCount: images.length,
+          itemBuilder: (context, index) {
+            return Image.file(images[index], fit: BoxFit.cover);
+          },
+        ),
       ),
     );
   }
