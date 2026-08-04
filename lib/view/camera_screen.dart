@@ -1,5 +1,10 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+// import 'package:geolocator/geolocator.dart';
+// import 'package:geocoding/geocoding.dart';
+import 'package:my_app2/services/location_service.dart';
 import 'package:my_app2/view/gallery_screen.dart';
 import '../viewModel/camera_viewmodel.dart';
 
@@ -9,19 +14,62 @@ class CameraScreen extends StatefulWidget {
   @override
   State<CameraScreen> createState() => _CameraScreenState();
 }
+// Location Class
 
 class _CameraScreenState extends State<CameraScreen> {
+  final LocationService locationService = LocationService();
   final CameraViewModel viewModel = CameraViewModel();
+  Position? position;
+  Placemark? placemark;
   late XFile? imageFile;
+
   @override
   void initState() {
     super.initState();
+
+    loadLocation();
 
     viewModel.initilizeCamera().then((_) {
       if (mounted) {
         setState(() {});
       }
     });
+  }
+
+  // Future<void> loadLocation() async {
+  //   Position currentPosition = await locationService.getCurrentLocation();
+  //   Placemark currentPlacemark = await locationService.getAddress(
+  //     currentPosition,
+  //   );
+
+  //   setState(() {
+  //     position = currentPosition;
+  //     placemark = currentPlacemark;
+  //   });
+  // }
+
+  Future<void> loadLocation() async {
+    try {
+      Position currentPosition = await locationService.getCurrentLocation();
+
+      print("Latitude: ${currentPosition.latitude}");
+      print("Longitude: ${currentPosition.longitude}");
+
+      Placemark currentPlacemark = await locationService.getAddress(
+        currentPosition,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        position = currentPosition;
+        placemark = currentPlacemark;
+      });
+
+      print("UI Updated");
+    } catch (e) {
+      print("Location Error: $e");
+    }
   }
 
   @override
@@ -44,6 +92,95 @@ class _CameraScreenState extends State<CameraScreen> {
       body: Stack(
         children: [
           CameraPreview(viewModel.controller!),
+
+          // Map ---
+          Positioned(
+            top: 550,
+            left: 20,
+            right: 20,
+
+            child: Container(
+
+
+
+
+
+
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                
+                children: [
+                  // Small Map ------------>
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 90,
+                      height: 90,
+
+                      child: Image.asset(
+                        "assets/images/img1.jpg", // Replace with your static map later
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+
+
+
+
+
+
+
+
+
+
+                  const SizedBox(width: 12),
+
+                  // Location Information
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "City : ${placemark?.locality ?? '--'},${placemark?.administrativeArea ?? '--'}, ${placemark?.country ?? '--'}",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+
+                        Text(
+                          "Address : "
+                          "${placemark?.street ?? ''}, "
+                          "${placemark?.subLocality ?? ''}, "
+                          "${placemark?.locality ?? ''}, "
+                          "${placemark?.administrativeArea ?? ''}, "
+                          "${placemark?.postalCode ?? ''}, "
+                          "${placemark?.country ?? ''}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          "Latitude : ${position?.latitude ?? '--'}°",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+
+                        Text(
+                          "Longitude : ${position?.longitude ?? '--'}°",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+
+                        Text(
+                          "Date & Time : ${DateTime.now()}",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
           Align(
             alignment: Alignment.bottomCenter,
