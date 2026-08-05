@@ -12,6 +12,7 @@ import 'package:my_app2/services/location_service.dart';
 import 'package:my_app2/view/gallery_screen.dart';
 import 'package:my_app2/view/location_screen.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import '../viewModel/camera_viewmodel.dart';
 
 import 'package:image/image.dart' as img;
@@ -30,24 +31,64 @@ class _CameraScreenState extends State<CameraScreen> {
   Position? position;
   Placemark? placemark;
   String? _cameraError;
+  String? _locationError;
   bool _isCapturing = false;
+  bool _isInitializingCamera = false;
+  bool _cameraPermissionDenied = false;
+  bool _cameraPermissionPermanentlyDenied = false;
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    loadLocation();
-    _initializeCamera();
+    _startCamera();
   }
 
-  Future<void> _initializeCamera() async {
-    setState(() => _cameraError = null);
+  /// Runtime permission prompts must be requested one at a time on Android.
+  /// Starting location at the same time as the camera can cause the camera
+  /// plugin to report a false "permission denied" initialization error.
+  Future<void> _startCamera() async {
+    if (_isInitializingCamera) return;
+    setState(() {
+      _isInitializingCamera = true;
+      _cameraError = null;
+      _cameraPermissionDenied = false;
+      _cameraPermissionPermanentlyDenied = false;
+    });
+
     try {
+      var cameraPermission = await Permission.camera.status;
+      if (!cameraPermission.isGranted) {
+        cameraPermission = await Permission.camera.request();
+      }
+
+      if (!cameraPermission.isGranted) {
+        if (!mounted) return;
+        setState(() {
+          _cameraPermissionDenied = true;
+          _cameraPermissionPermanentlyDenied =
+              cameraPermission.isPermanentlyDenied ||
+              cameraPermission.isRestricted;
+          _cameraError = _cameraPermissionPermanentlyDenied
+              ? 'Camera permission is disabled. Enable it in Settings to use the camera.'
+              : 'Camera permission is required to use this app.';
+        });
+        return;
+      }
+
       await viewModel.initializeCamera();
-      if (mounted) setState(() {});
+
+      // Request location only after the camera permission dialog is complete.
+      // A location failure must not prevent the camera preview from opening.
+      if (mounted) {
+        setState(() {});
+        await loadLocation();
+      }
     } catch (error) {
       if (mounted) setState(() => _cameraError = error.toString());
+    } finally {
+      if (mounted) setState(() => _isInitializingCamera = false);
     }
   }
 
@@ -286,6 +327,7 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> loadLocation() async {
+    if (mounted) setState(() => _locationError = null);
     try {
       Position currentPosition = await locationService.getCurrentLocation();
 
@@ -301,6 +343,7 @@ class _CameraScreenState extends State<CameraScreen> {
       });
     } catch (error) {
       debugPrint('Location error: $error');
+      if (mounted) setState(() => _locationError = error.toString());
     }
   }
 
@@ -326,8 +369,16 @@ class _CameraScreenState extends State<CameraScreen> {
                 Text(_cameraError!, textAlign: TextAlign.center),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _initializeCamera,
-                  child: const Text('Retry camera'),
+                  onPressed: _cameraPermissionPermanentlyDenied
+                      ? openAppSettings
+                      : _startCamera,
+                  child: Text(
+                    _cameraPermissionPermanentlyDenied
+                        ? 'Open Settings'
+                        : _cameraPermissionDenied
+                        ? 'Allow camera'
+                        : 'Retry camera',
+                  ),
                 ),
               ],
             ),
@@ -368,7 +419,14 @@ class _CameraScreenState extends State<CameraScreen> {
                       width: 100,
                       height: 100,
                       child: position == null
-                          ? const Center(child: CircularProgressIndicator())
+                          ? Center(
+                              child: _locationError == null
+                                  ? const CircularProgressIndicator()
+                                  : const Icon(
+                                      Icons.location_off,
+                                      color: Colors.white,
+                                    ),
+                            )
                           : FlutterMap(
                               options: MapOptions(
                                 initialCenter: LatLng(
@@ -384,7 +442,8 @@ class _CameraScreenState extends State<CameraScreen> {
                                 TileLayer(
                                   urlTemplate:
                                       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.example.my_app2',
+                                  userAgentPackageName:
+                                      'com.tachyonbyte.opengps',
                                 ),
                                 MarkerLayer(
                                   markers: [

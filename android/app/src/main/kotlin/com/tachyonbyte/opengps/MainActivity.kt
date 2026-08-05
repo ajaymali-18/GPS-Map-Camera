@@ -1,4 +1,4 @@
-package com.example.my_app2
+package com.tachyonbyte.opengps
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -13,6 +13,11 @@ class CameraViewModel {
   CameraController? controller;
 
   Future<void> initializeCamera() async {
+    // Retrying after a failed initialization must not leave the old native
+    // camera instance open.
+    await controller?.dispose();
+    controller = null;
+
     final cameras = await availableCameras();
     if (cameras.isEmpty) {
       throw StateError('No camera is available on this device.');
@@ -22,13 +27,19 @@ class CameraViewModel {
       (camera) => camera.lensDirection == CameraLensDirection.back,
       orElse: () => cameras.first,
     );
-    controller = CameraController(
+    final newController = CameraController(
       backCamera,
       ResolutionPreset.high,
       enableAudio: false,
     );
 
-    await controller!.initialize();
+    try {
+      await newController.initialize();
+      controller = newController;
+    } catch (_) {
+      await newController.dispose();
+      rethrow;
+    }
   }
 
   void dispose() {

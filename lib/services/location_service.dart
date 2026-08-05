@@ -7,14 +7,8 @@ class LocationService {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Check if location services are enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-
-    if (!serviceEnabled) {
-      throw Exception("Location services are disabled.");
-    }
-
-    // Check permission
+    // Request app permission before checking the device Location switch. This
+    // ensures a new installation shows Android's permission prompt.
     permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
@@ -29,10 +23,15 @@ class LocationService {
       throw Exception("Location permissions are permanently denied.");
     }
 
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception(
+        "Turn on Location in your device settings, then try again.",
+      );
+    }
+
     return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
   }
 

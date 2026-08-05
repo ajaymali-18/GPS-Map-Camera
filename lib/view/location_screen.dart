@@ -95,7 +95,7 @@ class _LocationScreenState extends State<LocationScreen> {
                       TileLayer(
                         urlTemplate:
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.example.my_app2',
+                        userAgentPackageName: 'com.tachyonbyte.opengps',
                       ),
                       MarkerLayer(
                         markers: [
