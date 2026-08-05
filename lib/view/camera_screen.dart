@@ -439,7 +439,26 @@ class _CameraScreenState extends State<CameraScreen> {
         children: [
           // Native-camera style preview: it fills the complete portrait
           // screen, including the space previously occupied by the AppBar.
-          Positioned.fill(child: CameraPreview(viewModel.controller!)),
+          Positioned.fill(
+            child: GestureDetector(
+              onScaleStart: (details) {
+                viewModel.baseZoom = viewModel.currentZoom;
+              },
+              onScaleUpdate: (details) async {
+                final zoom = (viewModel.baseZoom * details.scale).clamp(
+                  viewModel.minZoom,
+                  viewModel.maxZoom,
+                );
+
+                await viewModel.setZoom(zoom);
+
+                if (mounted) {
+                  setState(() {});
+                }
+              },
+              child: CameraPreview(viewModel.controller!),
+            ),
+          ),
 
           // Flash Button
           Positioned(
@@ -460,16 +479,16 @@ class _CameraScreenState extends State<CameraScreen> {
                     viewModel.flashMode == FlashMode.off
                         ? Icons.flash_off
                         : viewModel.flashMode == FlashMode.always
-                            ? Icons.flash_on
-                            : Icons.flashlight_on,
+                        ? Icons.flash_on
+                        : Icons.flashlight_on,
                     color: Colors.white,
                     size: 26,
                   ),
                   tooltip: viewModel.flashMode == FlashMode.off
                       ? 'Flash Off'
                       : viewModel.flashMode == FlashMode.always
-                          ? 'Flash On'
-                          : 'Torch On',
+                      ? 'Flash On'
+                      : 'Torch On',
                 ),
               ),
             ),
@@ -486,7 +505,6 @@ class _CameraScreenState extends State<CameraScreen> {
               color: Colors.black54,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-
                 children: [
                   // Small Map ------------>
                   GestureDetector(
@@ -620,6 +638,78 @@ class _CameraScreenState extends State<CameraScreen> {
                           style: const TextStyle(color: Colors.white),
                         ),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Zoom Buttons (1x & 2x)
+          Positioned(
+            bottom: 100,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Gesture Dectector for Buttons
+                  GestureDetector(
+                    onTap: () async {
+                      await viewModel.setZoom(1.0);
+                      if (mounted) setState(() {});
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: viewModel.currentZoom <= 1.0
+                            ? const Color(0xFF3C096C)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        '1x',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: viewModel.currentZoom <= 1.0
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () async {
+                      await viewModel.setZoom(2.0);
+                      if (mounted) setState(() {});
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: viewModel.currentZoom > 1.0
+                            ? const Color(0xFF3C096C)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        '2x',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: viewModel.currentZoom > 1.0
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ],

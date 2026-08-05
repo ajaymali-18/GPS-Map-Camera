@@ -5,9 +5,12 @@ import '../services/gallery_service.dart';
 
 class CameraViewModel {
   // Flash & Zoom
+  double baseZoom = 1.0;
   double minZoom = 1.0;
   double maxZoom = 1.0;
   double currentZoom = 1.0;
+
+  // touch screen zoom variable
 
   FlashMode flashMode = FlashMode.off;
 
@@ -68,6 +71,14 @@ class CameraViewModel {
     }
 
     await controller!.setFlashMode(flashMode);
+  }
+
+  // zoom
+  Future<void> setZoom(double zoom) async {
+    if (controller == null || !controller!.value.isInitialized) return;
+    final targetZoom = zoom.clamp(minZoom, maxZoom);
+    await controller!.setZoomLevel(targetZoom);
+    currentZoom = targetZoom;
   }
 
   void dispose() {
