@@ -93,6 +93,44 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  Future<void> _openGallery() async {
+    var permission = await Permission.photos.status;
+    if (!permission.isGranted && !permission.isLimited) {
+      permission = await Permission.photos.request();
+    }
+
+    // Android 12 and older use the legacy storage permission instead of the
+    // Android 13+ photo permission.
+    if (Platform.isAndroid &&
+        !permission.isGranted &&
+        !permission.isLimited) {
+      var storagePermission = await Permission.storage.status;
+      if (!storagePermission.isGranted) {
+        storagePermission = await Permission.storage.request();
+      }
+      if (storagePermission.isGranted) permission = storagePermission;
+    }
+
+    if (!permission.isGranted && !permission.isLimited) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Photo permission is required to open Gallery.'),
+          action: permission.isPermanentlyDenied
+              ? SnackBarAction(label: 'Settings', onPressed: openAppSettings)
+              : null,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const GalleryScreen()),
+    );
+  }
+
   Future<Uint8List> _createStampedPhoto(
     XFile image,
     img.Image? mapSnapshot,
@@ -584,14 +622,7 @@ class _CameraScreenState extends State<CameraScreen> {
                       children: [
                         FloatingActionButton(
                           elevation: 0,
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const GalleryScreen(),
-                              ),
-                            );
-                          },
+                          onPressed: _openGallery,
                           backgroundColor: Colors.white,
                           foregroundColor: const Color(0xFF3C096C),
                           child: const Icon(Icons.image),
