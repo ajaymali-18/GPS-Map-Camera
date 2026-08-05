@@ -1,11 +1,115 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:native_exif/native_exif.dart';
+import 'package:path/path.dart' as path;
 
-class ImagePreviewScreen extends StatelessWidget {
+class ImagePreviewScreen extends StatefulWidget {
   final File image;
 
   const ImagePreviewScreen({super.key, required this.image});
+
+  @override
+  State<ImagePreviewScreen> createState() => _ImagePreviewScreenState();
+}
+
+class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
+  Map<String, Object> _exifData = {};
+  double? _latitude;
+  double? _longitude;
+  Placemark? _placemark;
+  bool _isLoadingExif = true;
+  int? _imageWidth;
+  int? _imageHeight;
+  int _fileSizeBytes = 0;
+  bool _showOverlay = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExif();
+  }
+
+  Future<void> _loadExif() async {
+    try {
+      final file = widget.image;
+      if (await file.exists()) {
+        _fileSizeBytes = await file.length();
+        final exif = await Exif.fromPath(file.path);
+        final attributes = await exif.getAttributes() ?? <String, Object>{};
+        final latLong = await exif.getLatLong();
+        await exif.close();
+
+        _exifData = attributes;
+
+        final widthAttr = attributes['ImageWidth'];
+        final heightAttr = attributes['ImageLength'];
+        if (widthAttr != null && heightAttr != null) {
+          _imageWidth = int.tryParse(widthAttr.toString());
+          _imageHeight = int.tryParse(heightAttr.toString());
+        }
+
+        if (latLong != null) {
+          _latitude = latLong.latitude;
+          _longitude = latLong.longitude;
+        } else {
+          // Fallback parsing from attributes
+          final latAttr = attributes['GPSLatitude'];
+          final latRef = attributes['GPSLatitudeRef'];
+          final lngAttr = attributes['GPSLongitude'];
+          final lngRef = attributes['GPSLongitudeRef'];
+          if (latAttr != null && lngAttr != null) {
+            double? parsedLat = double.tryParse(latAttr.toString());
+            double? parsedLng = double.tryParse(lngAttr.toString());
+            if (parsedLat != null && parsedLng != null) {
+              if (latRef?.toString().toUpperCase() == 'S') {
+                parsedLat = -parsedLat.abs();
+              }
+              if (lngRef?.toString().toUpperCase() == 'W') {
+                parsedLng = -parsedLng.abs();
+              }
+              _latitude = parsedLat;
+              _longitude = parsedLng;
+            }
+          }
+        }
+
+        if (_latitude != null && _longitude != null) {
+          try {
+            final placemarks = await placemarkFromCoordinates(
+              _latitude!,
+              _longitude!,
+            );
+            if (placemarks.isNotEmpty) {
+              _placemark = placemarks.first;
+            }
+          } catch (e) {
+            debugPrint("Reverse geocoding error in preview: $e");
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error loading EXIF in preview: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingExif = false;
+        });
+      }
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  }
+
+  String _formattedFileDate(DateTime value) {
+    return '${value.day}/${value.month}/${value.year} ${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+  }
 
   Future<void> deleteImage(BuildContext context) async {
     bool? confirm = await showDialog<bool>(
@@ -20,6 +124,10 @@ class ImagePreviewScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
             child: const Text("Delete"),
           ),
         ],
@@ -28,7 +136,7 @@ class ImagePreviewScreen extends StatelessWidget {
 
     if (confirm != true) return;
 
-    await image.delete();
+    await widget.image.delete();
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -37,8 +145,201 @@ class ImagePreviewScreen extends StatelessWidget {
     Navigator.pop(context, true);
   }
 
+  void _showExifDetailsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        final address = [
+          _placemark?.street,
+          _placemark?.subLocality,
+          _placemark?.locality,
+          _placemark?.administrativeArea,
+          _placemark?.postalCode,
+          _placemark?.country,
+        ].whereType<String>().where((p) => p.isNotEmpty).join(', ');
+
+        final dateTimeStr = _exifData['DateTimeOriginal']?.toString() ??
+            _exifData['DateTime']?.toString() ??
+            _formattedFileDate(widget.image.lastModifiedSync());
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.3,
+          maxChildSize: 0.85,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[600],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    "Exif Metadata & Photo Info",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoTile(
+                    Icons.insert_drive_file_outlined,
+                    "File Name",
+                    path.basename(widget.image.path),
+                  ),
+                  _buildInfoTile(
+                    Icons.sd_storage_outlined,
+                    "File Size",
+                    _formatFileSize(_fileSizeBytes),
+                  ),
+                  if (_imageWidth != null && _imageHeight != null)
+                    _buildInfoTile(
+                      Icons.aspect_ratio_outlined,
+                      "Resolution",
+                      "$_imageWidth × $_imageHeight",
+                    ),
+                  _buildInfoTile(
+                    Icons.calendar_today_outlined,
+                    "Date & Time",
+                    dateTimeStr,
+                  ),
+                  _buildInfoTile(
+                    Icons.location_on_outlined,
+                    "Latitude",
+                    _latitude != null
+                        ? "${_latitude!.abs().toStringAsFixed(6)}° ${_latitude! >= 0 ? 'N' : 'S'}"
+                        : "Not recorded in EXIF",
+                  ),
+                  _buildInfoTile(
+                    Icons.location_on_outlined,
+                    "Longitude",
+                    _longitude != null
+                        ? "${_longitude!.abs().toStringAsFixed(6)}° ${_longitude! >= 0 ? 'E' : 'W'}"
+                        : "Not recorded in EXIF",
+                  ),
+                  if (address.isNotEmpty)
+                    _buildInfoTile(
+                      Icons.map_outlined,
+                      "Address",
+                      address,
+                    ),
+                  if (_exifData.containsKey('GPSAltitude'))
+                    _buildInfoTile(
+                      Icons.height_outlined,
+                      "Altitude",
+                      "${_exifData['GPSAltitude']} m",
+                    ),
+                  if (_exifData.isNotEmpty) ...[
+                    const Divider(color: Colors.white24, height: 24),
+                    const Text(
+                      "Raw EXIF Tags",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ..._exifData.entries.map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 140,
+                              child: Text(
+                                "${entry.key}: ",
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                entry.value.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoTile(IconData icon, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFF9D4EDD), size: 22),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final address = [
+      _placemark?.locality,
+      _placemark?.country,
+    ].whereType<String>().where((p) => p.isNotEmpty).join(', ');
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -51,21 +352,130 @@ class ImagePreviewScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Exif Metadata Info',
+            icon: const Icon(Icons.info_outline),
+            onPressed: _showExifDetailsSheet,
+          ),
+        ],
       ),
-      body: Center(child: InteractiveViewer(child: Image.file(image))),
-
+      body: Stack(
+        children: [
+          Center(
+            child: InteractiveViewer(
+              child: Image.file(widget.image),
+            ),
+          ),
+          if (_showOverlay)
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: GestureDetector(
+                onTap: _showExifDetailsSheet,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        color: Color(0xFF9D4EDD),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _isLoadingExif
+                            ? const Text(
+                                "Loading EXIF metadata...",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _latitude != null && _longitude != null
+                                        ? "Lat: ${_latitude!.toStringAsFixed(6)}°, Lng: ${_longitude!.toStringAsFixed(6)}°"
+                                        : "No GPS EXIF recorded",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (address.isNotEmpty)
+                                    Text(
+                                      address,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.white70,
+                          size: 16,
+                        ),
+                        onPressed: _showExifDetailsSheet,
+                        tooltip: 'Details',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.only(bottom: 12, top: 4),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
+                tooltip: 'Exif Info',
+                onPressed: _showExifDetailsSheet,
+                icon: const Icon(
+                  Icons.info_outline,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Toggle Overlay',
+                onPressed: () {
+                  setState(() {
+                    _showOverlay = !_showOverlay;
+                  });
+                },
+                icon: Icon(
+                  _showOverlay
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Delete Image',
                 onPressed: () => deleteImage(context),
                 icon: const Icon(
                   Icons.delete_outline,
-                  color: Colors.white,
-                  size: 35,
+                  color: Colors.redAccent,
+                  size: 30,
                 ),
               ),
             ],

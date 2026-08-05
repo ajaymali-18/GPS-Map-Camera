@@ -12,7 +12,7 @@ class LocationScreen extends StatefulWidget {
   State<LocationScreen> createState() => _LocationScreenState();
 }
 
-class _LocationScreenState extends State<LocationScreen> {
+class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObserver {
   final LocationService _locationService = LocationService();
   Position? _position;
   Placemark? _placemark;
@@ -23,7 +23,21 @@ class _LocationScreenState extends State<LocationScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadLocation();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadLocation();
+    }
   }
 
   Future<void> _loadLocation() async {
@@ -81,9 +95,12 @@ class _LocationScreenState extends State<LocationScreen> {
                     Text(_error!, textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _isLocationServiceDisabled
-                          ? _locationService.openLocationSettings
-                          : _loadLocation,
+                      onPressed: () async {
+                        if (_isLocationServiceDisabled) {
+                          await _locationService.openLocationSettings();
+                        }
+                        await _loadLocation();
+                      },
                       child: Text(
                         _isLocationServiceDisabled
                             ? 'Turn on Location'

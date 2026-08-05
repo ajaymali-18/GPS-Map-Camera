@@ -45,9 +45,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
   }
 
+  String _formatDate(DateTime dt) {
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text("Gallery"),
         centerTitle: true,
@@ -58,25 +63,30 @@ class _GalleryScreenState extends State<GalleryScreen> {
       body: SafeArea(
         child: images.isEmpty
             ? const Center(
-                child: Text("No Images Found", style: TextStyle(fontSize: 18)),
+                child: Text(
+                  "No Images Found",
+                  style: TextStyle(fontSize: 18, color: Colors.white54),
+                ),
               )
             : GridView.builder(
                 padding: const EdgeInsets.all(8),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  mainAxisSpacing: 5,
-                  crossAxisSpacing: 5,
-                  childAspectRatio: 0.75,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  childAspectRatio: 0.8,
                 ),
                 itemCount: images.length,
                 itemBuilder: (context, index) {
+                  final file = images[index];
+                  final modTime = file.lastModifiedSync();
+
                   return GestureDetector(
                     onTap: () async {
                       final deleted = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              ImagePreviewScreen(image: images[index]),
+                          builder: (_) => ImagePreviewScreen(image: file),
                         ),
                       );
 
@@ -86,7 +96,52 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.file(images[index], fit: BoxFit.cover),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(file, fit: BoxFit.cover),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.8),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatDate(modTime),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.info_outline,
+                                    color: Colors.white70,
+                                    size: 12,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },

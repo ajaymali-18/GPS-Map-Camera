@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/gallery_service.dart';
 
 class CameraViewModel {
@@ -16,8 +17,8 @@ class CameraViewModel {
 
   final GalleryService galleryService = GalleryService();
 
-  Future<void> saveImageBytes(Uint8List bytes) async {
-    await galleryService.saveImageBytes(bytes);
+  Future<void> saveImageBytes(Uint8List bytes, {Position? position}) async {
+    await galleryService.saveImageBytes(bytes, position: position);
   }
 
   CameraController? controller;

@@ -46,6 +46,7 @@ dependencies:
   latlong2: ^0.10.1
   image: ^4.2.0
   http: ^1.2.2
+  native_exif: ^0.8.0
   
 
 dev_dependencies:

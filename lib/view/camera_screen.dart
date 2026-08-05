@@ -25,7 +25,7 @@ class CameraScreen extends StatefulWidget {
 }
 // Location Class
 
-class _CameraScreenState extends State<CameraScreen> {
+class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver {
   final LocationService locationService = LocationService();
   final CameraViewModel viewModel = CameraViewModel();
   Position? position;
@@ -41,7 +41,15 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startCamera();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      loadLocation();
+    }
   }
 
   Future<void> _startCamera() async {
@@ -391,6 +399,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     viewModel.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -593,9 +602,12 @@ class _CameraScreenState extends State<CameraScreen> {
                         ),
                         if (position == null && _locationError != null)
                           TextButton.icon(
-                            onPressed: _isLocationServiceDisabled
-                                ? locationService.openLocationSettings
-                                : loadLocation,
+                            onPressed: () async {
+                              if (_isLocationServiceDisabled) {
+                                await locationService.openLocationSettings();
+                              }
+                              await loadLocation();
+                            },
                             icon: const Icon(Icons.settings, size: 16),
                             label: Text(
                               _isLocationServiceDisabled
@@ -780,6 +792,7 @@ class _CameraScreenState extends State<CameraScreen> {
                                         );
                                     await viewModel.saveImageBytes(
                                       stampedPhoto,
+                                      position: position,
                                     );
                                     didSave = true;
                                   } catch (error) {
