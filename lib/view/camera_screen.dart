@@ -441,6 +441,40 @@ class _CameraScreenState extends State<CameraScreen> {
           // screen, including the space previously occupied by the AppBar.
           Positioned.fill(child: CameraPreview(viewModel.controller!)),
 
+          // Flash Button
+          Positioned(
+            top: 16,
+            right: 16,
+            child: SafeArea(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black45,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: () async {
+                    await viewModel.toggleFlash();
+                    setState(() {});
+                  },
+                  icon: Icon(
+                    viewModel.flashMode == FlashMode.off
+                        ? Icons.flash_off
+                        : viewModel.flashMode == FlashMode.always
+                            ? Icons.flash_on
+                            : Icons.flashlight_on,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                  tooltip: viewModel.flashMode == FlashMode.off
+                      ? 'Flash Off'
+                      : viewModel.flashMode == FlashMode.always
+                          ? 'Flash On'
+                          : 'Torch On',
+                ),
+              ),
+            ),
+          ),
+
           // Map ---
           Positioned(
             bottom: 150,
