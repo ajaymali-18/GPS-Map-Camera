@@ -18,6 +18,7 @@ class _LocationScreenState extends State<LocationScreen> {
   Placemark? _placemark;
   String? _error;
   bool _isLoading = true;
+  bool _isLocationServiceDisabled = false;
 
   @override
   void initState() {
@@ -29,17 +30,27 @@ class _LocationScreenState extends State<LocationScreen> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _isLocationServiceDisabled = false;
     });
     try {
       final position = await _locationService.getCurrentLocation();
-      final placemark = await _locationService.getAddress(position);
       if (!mounted) return;
-      setState(() {
-        _position = position;
-        _placemark = placemark;
-      });
+
+      // Keep a valid GPS position even if reverse geocoding is unavailable.
+      setState(() => _position = position);
+      try {
+        final placemark = await _locationService.getAddress(position);
+        if (mounted) setState(() => _placemark = placemark);
+      } catch (_) {
+        // Coordinates remain available without an address or network access.
+      }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() {
+          _error = error.toString();
+          _isLocationServiceDisabled = error is LocationServiceDisabledException;
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -70,8 +81,14 @@ class _LocationScreenState extends State<LocationScreen> {
                     Text(_error!, textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _loadLocation,
-                      child: const Text('Try again'),
+                      onPressed: _isLocationServiceDisabled
+                          ? _locationService.openLocationSettings
+                          : _loadLocation,
+                      child: Text(
+                        _isLocationServiceDisabled
+                            ? 'Turn on Location'
+                            : 'Try again',
+                      ),
                     ),
                   ],
                 ),

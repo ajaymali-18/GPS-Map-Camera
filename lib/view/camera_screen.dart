@@ -36,6 +36,7 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isInitializingCamera = false;
   bool _cameraPermissionDenied = false;
   bool _cameraPermissionPermanentlyDenied = false;
+  bool _isLocationServiceDisabled = false;
 
   @override
   void initState() {
@@ -327,23 +328,38 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> loadLocation() async {
-    if (mounted) setState(() => _locationError = null);
+    if (mounted) {
+      setState(() {
+        _locationError = null;
+        _isLocationServiceDisabled = false;
+      });
+    }
     try {
-      Position currentPosition = await locationService.getCurrentLocation();
-
-      Placemark currentPlacemark = await locationService.getAddress(
-        currentPosition,
-      );
+      final currentPosition = await locationService.getCurrentLocation();
 
       if (!mounted) return;
 
-      setState(() {
-        position = currentPosition;
-        placemark = currentPlacemark;
-      });
+      // Coordinates and the map do not depend on reverse geocoding. Show
+      // them immediately so a failed/slow address lookup cannot hide a valid
+      // GPS position.
+      setState(() => position = currentPosition);
+
+      try {
+        final currentPlacemark = await locationService.getAddress(
+          currentPosition,
+        );
+        if (mounted) setState(() => placemark = currentPlacemark);
+      } catch (error) {
+        debugPrint('Address lookup error: $error');
+      }
     } catch (error) {
       debugPrint('Location error: $error');
-      if (mounted) setState(() => _locationError = error.toString());
+      if (mounted) {
+        setState(() {
+          _locationError = error.toString();
+          _isLocationServiceDisabled = error is LocationServiceDisabledException;
+        });
+      }
     }
   }
 
@@ -413,62 +429,68 @@ class _CameraScreenState extends State<CameraScreen> {
 
                 children: [
                   // Small Map ------------>
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 100,
-                      height: 100,
-                      child: position == null
-                          ? Center(
-                              child: _locationError == null
-                                  ? const CircularProgressIndicator()
-                                  : const Icon(
-                                      Icons.location_off,
-                                      color: Colors.white,
-                                    ),
-                            )
-                          : FlutterMap(
-                              options: MapOptions(
-                                initialCenter: LatLng(
-                                  position!.latitude,
-                                  position!.longitude,
-                                ),
-                                initialZoom: 14,
-                                interactionOptions: const InteractionOptions(
-                                  flags: InteractiveFlag.none,
-                                ),
-                              ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName:
-                                      'com.tachyonbyte.opengps',
-                                ),
-                                MarkerLayer(
-                                  markers: [
-                                    Marker(
-                                      point: LatLng(
-                                        position!.latitude,
-                                        position!.longitude,
+                  GestureDetector(
+                    onTap: position == null && _locationError != null
+                        ? loadLocation
+                        : null,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 100,
+                        height: 100,
+                        child: position == null
+                            ? Center(
+                                child: _locationError == null
+                                    ? const CircularProgressIndicator()
+                                    : const Icon(
+                                        Icons.location_off,
+                                        color: Colors.white,
                                       ),
-                                      width: 40,
-                                      height: 40,
-                                      child: const Icon(
-                                        Icons.location_pin,
-                                        color: Color.fromARGB(
-                                          255,
-                                          235,
-                                          101,
-                                          92,
+                              )
+                            : FlutterMap(
+                                options: MapOptions(
+                                  initialCenter: LatLng(
+                                    position!.latitude,
+                                    position!.longitude,
+                                  ),
+                                  initialZoom: 14,
+                                  interactionOptions:
+                                      const InteractionOptions(
+                                        flags: InteractiveFlag.none,
+                                      ),
+                                ),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate:
+                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName:
+                                        'com.tachyonbyte.opengps',
+                                  ),
+                                  MarkerLayer(
+                                    markers: [
+                                      Marker(
+                                        point: LatLng(
+                                          position!.latitude,
+                                          position!.longitude,
                                         ),
-                                        size: 35,
+                                        width: 40,
+                                        height: 40,
+                                        child: const Icon(
+                                          Icons.location_pin,
+                                          color: Color.fromARGB(
+                                            255,
+                                            235,
+                                            101,
+                                            92,
+                                          ),
+                                          size: 35,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                      ),
                     ),
                   ),
 
@@ -480,9 +502,35 @@ class _CameraScreenState extends State<CameraScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "${placemark?.locality ?? '--'}, ${placemark?.administrativeArea ?? '--'}, ${placemark?.country ?? '--'} ${_countryFlag(placemark?.isoCountryCode)}",
-                          style: const TextStyle(color: Colors.white),
+                          _locationError == null
+                              ? "${placemark?.locality ?? '--'}, ${placemark?.administrativeArea ?? '--'}, ${placemark?.country ?? '--'} ${_countryFlag(placemark?.isoCountryCode)}"
+                              : _isLocationServiceDisabled
+                              ? 'Device Location is turned off'
+                              : 'Location unavailable — tap the map to retry',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        if (position == null && _locationError != null)
+                          TextButton.icon(
+                            onPressed: _isLocationServiceDisabled
+                                ? locationService.openLocationSettings
+                                : loadLocation,
+                            icon: const Icon(Icons.settings, size: 16),
+                            label: Text(
+                              _isLocationServiceDisabled
+                                  ? 'Turn on Location'
+                                  : 'Try again',
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 30),
+                            ),
+                          ),
 
                         Text(
                           "${placemark?.street ?? ''}, "

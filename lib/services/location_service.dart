@@ -25,15 +25,18 @@ class LocationService {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception(
-        "Turn on Location in your device settings, then try again.",
-      );
+      throw const LocationServiceDisabledException();
     }
 
     return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 20),
+      ),
     );
   }
+
+  Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
 
   /// Convert latitude & longitude to address
   Future<Placemark> getAddress(Position position) async {
