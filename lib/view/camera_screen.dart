@@ -41,14 +41,9 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
     _startCamera();
   }
 
-  /// Runtime permission prompts must be requested one at a time on Android.
-  /// Starting location at the same time as the camera can cause the camera
-  /// plugin to report a false "permission denied" initialization error.
   Future<void> _startCamera() async {
     if (_isInitializingCamera) return;
     setState(() {
@@ -80,8 +75,6 @@ class _CameraScreenState extends State<CameraScreen> {
 
       await viewModel.initializeCamera();
 
-      // Request location only after the camera permission dialog is complete.
-      // A location failure must not prevent the camera preview from opening.
       if (mounted) {
         setState(() {});
         await loadLocation();
@@ -99,11 +92,7 @@ class _CameraScreenState extends State<CameraScreen> {
       permission = await Permission.photos.request();
     }
 
-    // Android 12 and older use the legacy storage permission instead of the
-    // Android 13+ photo permission.
-    if (Platform.isAndroid &&
-        !permission.isGranted &&
-        !permission.isLimited) {
+    if (Platform.isAndroid && !permission.isGranted && !permission.isLimited) {
       var storagePermission = await Permission.storage.status;
       if (!storagePermission.isGranted) {
         storagePermission = await Permission.storage.request();
@@ -159,8 +148,6 @@ class _CameraScreenState extends State<CameraScreen> {
       'Date: ${timestamp.toLocal().toString().split('.').first}',
     ];
 
-    // The photo can be much narrower than the preview, so wrap address text
-    // based on the actual photo width instead of cutting it off.
     const horizontalPadding = 36;
     const lineHeight = 32;
     const verticalPadding = 20;
@@ -395,7 +382,8 @@ class _CameraScreenState extends State<CameraScreen> {
       if (mounted) {
         setState(() {
           _locationError = error.toString();
-          _isLocationServiceDisabled = error is LocationServiceDisabledException;
+          _isLocationServiceDisabled =
+              error is LocationServiceDisabledException;
         });
       }
     }
@@ -492,10 +480,9 @@ class _CameraScreenState extends State<CameraScreen> {
                                     position!.longitude,
                                   ),
                                   initialZoom: 14,
-                                  interactionOptions:
-                                      const InteractionOptions(
-                                        flags: InteractiveFlag.none,
-                                      ),
+                                  interactionOptions: const InteractionOptions(
+                                    flags: InteractiveFlag.none,
+                                  ),
                                 ),
                                 children: [
                                   TileLayer(
