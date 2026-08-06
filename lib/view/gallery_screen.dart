@@ -79,6 +79,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         onFlashPressed: () {
           Navigator.pop(context);
         },
+        trailing: const SizedBox(width: 48),
       ),
       body: SafeArea(
         child: Column(

@@ -388,19 +388,41 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     super.dispose();
   }
 
-  String get _headerLocationBanner {
-    if (placemark != null) {
-      final street = placemark!.thoroughfare ?? placemark!.street ?? '';
-      final subLoc = placemark!.subLocality ?? placemark!.locality ?? '';
-      if (street.isNotEmpty && subLoc.isNotEmpty) {
-        return '$street & $subLoc';
-      } else if (street.isNotEmpty) {
-        return street;
-      } else if (subLoc.isNotEmpty) {
-        return subLoc;
-      }
+  String get _locationCityStateCountry {
+    if (placemark == null) {
+      return position != null ? 'Fetching location...' : 'Fetching...';
     }
-    return 'OPEN GPS CAMERA';
+    final city = placemark!.locality ?? placemark!.subAdministrativeArea ?? '';
+    final state = placemark!.administrativeArea ?? '';
+    final country = placemark!.country ?? '';
+    final parts = [city, state, country].where((s) => s.trim().isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(', ') : 'Unknown';
+  }
+
+  String get _fullAddressString {
+    if (placemark == null) {
+      return position != null ? 'Fetching address...' : 'Unavailable';
+    }
+    final parts = [
+      placemark!.street,
+      placemark!.subLocality,
+      placemark!.locality,
+      placemark!.administrativeArea,
+      placemark!.postalCode,
+      placemark!.country,
+    ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(', ') : 'Unavailable';
+  }
+
+  String get _currentDateTimeString {
+    final now = DateTime.now().toLocal();
+    final year = now.year;
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    final second = now.second.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute:$second';
   }
 
   String _formatLatLongString(double val, bool isLat) {
@@ -465,7 +487,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
     final latStr = position != null ? _formatLatLongString(position!.latitude, true) : '--';
     final lngStr = position != null ? _formatLatLongString(position!.longitude, false) : '--';
-    final utcTimeStr = DateTime.now().toUtc().toString().split('.').first;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -499,7 +520,8 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             left: 0,
             right: 0,
             child: TopAppHeader(
-              title: _headerLocationBanner,
+              title: '',
+              trailing: const SizedBox(width: 48),
               onFlashPressed: () async {
                 await viewModel.toggleFlash();
                 setState(() {});
@@ -525,52 +547,62 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             ),
           ),
 
-          // 3. Floating Glassmorphism Location Card (Stitch Design)
+          // 3. Floating Bottom Information Panel (Camera Overlay)
           Positioned(
-            bottom: 160,
-            left: 16,
-            right: 16,
+            bottom: 138,
+            left: 12,
+            right: 12,
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xDD1C1C1C),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                color: Colors.black.withValues(alpha: 0.70),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black45,
-                    blurRadius: 12,
+                    blurRadius: 10,
                     offset: Offset(0, 4),
                   ),
                 ],
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Map / Location Thumbnail (Square 64x64)
+                  // Static Map Thumbnail (Left Side, Fixed Size 96x96 with Rounded Corners)
                   GestureDetector(
-                    onTap: position == null && _locationError != null ? loadLocation : null,
+                    onTap: position == null && _locationError != null
+                        ? (_isLocationServiceDisabled
+                            ? () async {
+                                await locationService.openLocationSettings();
+                                loadLocation();
+                              }
+                            : loadLocation)
+                        : null,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       child: SizedBox(
-                        width: 64,
-                        height: 64,
+                        width: 96,
+                        height: 96,
                         child: position == null
                             ? Container(
                                 color: Colors.white10,
                                 child: Center(
                                   child: _locationError == null
                                       ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
+                                          width: 24,
+                                          height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
                                             color: Colors.white,
                                           ),
                                         )
-                                      : const Icon(
-                                          Icons.location_off,
+                                      : Icon(
+                                          _isLocationServiceDisabled
+                                              ? Icons.location_disabled
+                                              : Icons.location_off,
                                           color: Colors.white70,
-                                          size: 24,
+                                          size: 28,
                                         ),
                                 ),
                               )
@@ -615,46 +647,143 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                     ),
                   ),
 
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
 
-                  // Location Details Column
+                  // Location Details (Right Side, Vertically Aligned)
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          placemark != null
-                              ? '${placemark?.street ?? placemark?.subLocality ?? ''}, ${placemark?.locality ?? placemark?.country ?? ''}'
-                              : _locationError != null
-                                  ? (_isLocationServiceDisabled
-                                      ? 'Location Service Turned Off'
-                                      : 'Tap map to retry location')
-                                  : 'Fetching location...',
+                        // Location: City, State, Country
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(
+                                text: 'Location: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              TextSpan(
+                                text: _locationCityStateCountry,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '$latStr, $lngStr',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontFamily: 'monospace',
+                        const SizedBox(height: 2),
+
+                        // Address: Full address (wrapping allowed)
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(
+                                text: 'Address: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              TextSpan(
+                                text: _fullAddressString,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '$utcTimeStr UTC',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 11,
+                        const SizedBox(height: 2),
+
+                        // Latitude
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(
+                                text: 'Latitude: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              TextSpan(
+                                text: latStr,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                            ],
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+
+                        // Longitude
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(
+                                text: 'Longitude: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              TextSpan(
+                                text: lngStr,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                            ],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+
+                        // Date & Time
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(
+                                text: 'Date & Time: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              TextSpan(
+                                text: _currentDateTimeString,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -666,7 +795,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
           // 4. Zoom Pill Switcher (Stitch Design: 0.5x, 1x, 2x)
           Positioned(
-            bottom: 100,
+            bottom: 96,
             left: 0,
             right: 0,
             child: Center(
@@ -679,11 +808,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildZoomPillOption('0.5x', viewModel.currentZoom <= 0.75, () async {
-                      await viewModel.setZoom(viewModel.minZoom);
-                      if (mounted) setState(() {});
-                    }),
-                    _buildZoomPillOption('1x', viewModel.currentZoom > 0.75 && viewModel.currentZoom <= 1.5, () async {
+                    _buildZoomPillOption('1x', viewModel.currentZoom <= 1.5, () async {
                       await viewModel.setZoom(1.0);
                       if (mounted) setState(() {});
                     }),

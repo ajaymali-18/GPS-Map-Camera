@@ -6,6 +6,7 @@ class BottomNavDock extends StatelessWidget {
   final VoidCallback? onShutterTap;
   final VoidCallback? onLocationTap;
   final Widget? galleryThumbnail;
+  final String? locationName;
 
   const BottomNavDock({
     super.key,
@@ -14,6 +15,7 @@ class BottomNavDock extends StatelessWidget {
     this.onShutterTap,
     this.onLocationTap,
     this.galleryThumbnail,
+    this.locationName,
   });
 
   @override
@@ -25,9 +27,28 @@ class BottomNavDock extends StatelessWidget {
       color: darkBgColor,
       child: SafeArea(
         top: false,
-        child: Container(
-          height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (locationName != null && locationName!.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 2, left: 16, right: 16),
+                child: Text(
+                  locationName!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            Container(
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -126,7 +147,9 @@ class BottomNavDock extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+);
   }
 }

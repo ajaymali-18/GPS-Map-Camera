@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -72,14 +71,42 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
     }
   }
 
-  String get _address => [
-        _placemark?.street,
-        _placemark?.subLocality,
-        _placemark?.locality,
-        _placemark?.administrativeArea,
-        _placemark?.postalCode,
-        _placemark?.country,
-      ].whereType<String>().where((part) => part.isNotEmpty).join(', ');
+  String get _locationCityStateCountry {
+    if (_placemark == null) {
+      return _position != null ? 'Fetching location...' : 'Fetching...';
+    }
+    final city = _placemark!.locality ?? _placemark!.subAdministrativeArea ?? '';
+    final state = _placemark!.administrativeArea ?? '';
+    final country = _placemark!.country ?? '';
+    final parts = [city, state, country].where((s) => s.trim().isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(', ') : 'Unknown';
+  }
+
+  String get _fullAddressString {
+    if (_placemark == null) {
+      return _position != null ? 'Fetching address...' : 'Unavailable';
+    }
+    final parts = [
+      _placemark!.street,
+      _placemark!.subLocality,
+      _placemark!.locality,
+      _placemark!.administrativeArea,
+      _placemark!.postalCode,
+      _placemark!.country,
+    ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(', ') : 'Unavailable';
+  }
+
+  String get _currentDateTimeString {
+    final now = DateTime.now().toLocal();
+    final year = now.year;
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    final second = now.second.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute:$second';
+  }
 
   String _formatCoordinate(double? val, bool isLat) {
     if (val == null) return '--';
@@ -174,192 +201,251 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                     left: 0,
                     right: 0,
                     child: TopAppHeader(
-                      title: 'LOCATION INSPECTOR',
+                      title: '',
                       onFlashPressed: () => Navigator.pop(context),
+                      trailing: const SizedBox(width: 48),
                     ),
                   ),
 
-                  // 3. Floating Target Recenter Button
-                  if (_position != null)
-                    Positioned(
-                      top: 70,
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: () {
-                          _mapController.move(
-                            LatLng(_position!.latitude, _position!.longitude),
-                            16,
-                          );
-                        },
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xDD1E1E1E),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white24, width: 1),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black38, blurRadius: 6),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.my_location,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // 4. Floating Location Inspector Card (Stitch Design)
+                  // 3. Floating Location Information Panel (Identical design to Camera Page)
                   Positioned(
-                    bottom: 16,
-                    left: 16,
-                    right: 16,
+                    bottom: 19,
+                    left: 12,
+                    right: 12,
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xEE1E1E1E),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                        color: Colors.black.withValues(alpha: 0.70),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
                         boxShadow: const [
                           BoxShadow(
-                            color: Colors.black54,
-                            blurRadius: 16,
-                            offset: Offset(0, 6),
+                            color: Colors.black45,
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Header: Title & Share Icon
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Current Position',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  if (_position != null) {
-                                    final text = 'Location: Lat ${_position!.latitude}, Lng ${_position!.longitude}\nAddress: $_address';
-                                    Clipboard.setData(ClipboardData(text: text));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Location copied to clipboard'),
-                                        duration: Duration(seconds: 2),
+                          // Static Map Thumbnail (Left Side, Fixed Size 96x96 with Rounded Corners)
+                          GestureDetector(
+                            onTap: _position == null && _error != null
+                                ? (_isLocationServiceDisabled
+                                    ? () async {
+                                        await _locationService.openLocationSettings();
+                                        _loadLocation();
+                                      }
+                                    : _loadLocation)
+                                : null,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                width: 96,
+                                height: 96,
+                                child: _position == null
+                                    ? Container(
+                                        color: Colors.white10,
+                                        child: Center(
+                                          child: _error == null
+                                              ? const SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  _isLocationServiceDisabled
+                                                      ? Icons.location_disabled
+                                                      : Icons.location_off,
+                                                  color: Colors.white70,
+                                                  size: 28,
+                                                ),
+                                        ),
+                                      )
+                                    : FlutterMap(
+                                        options: MapOptions(
+                                          initialCenter: LatLng(
+                                            _position!.latitude,
+                                            _position!.longitude,
+                                          ),
+                                          initialZoom: 14,
+                                          interactionOptions: const InteractionOptions(
+                                            flags: InteractiveFlag.none,
+                                          ),
+                                        ),
+                                        children: [
+                                          TileLayer(
+                                            urlTemplate:
+                                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                            userAgentPackageName:
+                                                'com.tachyonbyte.opengps',
+                                          ),
+                                          MarkerLayer(
+                                            markers: [
+                                              Marker(
+                                                point: LatLng(
+                                                  _position!.latitude,
+                                                  _position!.longitude,
+                                                ),
+                                                width: 24,
+                                                height: 24,
+                                                child: const Icon(
+                                                  Icons.location_pin,
+                                                  color: Colors.redAccent,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white12,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.share_outlined,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
                               ),
-                            ],
+                            ),
                           ),
 
-                          const SizedBox(height: 6),
+                          const SizedBox(width: 10),
 
-                          // GPS Signal Indicator
-                          Row(
-                            children: const [
-                              Icon(
-                                Icons.sensors,
-                                color: Color(0xFF22C55E),
-                                size: 18,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'GPS Signal: Excellent (± 3m)',
-                                style: TextStyle(
-                                  color: Color(0xFF22C55E),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Lat / Long Side-by-Side Metric Cards
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildMetricTile(
-                                  'LATITUDE',
-                                  _formatCoordinate(_position?.latitude, true),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildMetricTile(
-                                  'LONGITUDE',
-                                  _formatCoordinate(_position?.longitude, false),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Altitude Metric Card
-                          _buildAltitudeTile(
-                            'ALTITUDE',
-                            '${_position?.altitude != null && _position!.altitude != 0.0 ? _position!.altitude.toStringAsFixed(0) : '15'}m ASL',
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Primary Blue Refresh Data Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: _isLoading ? null : _loadLocation,
-                              icon: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
+                          // Location Details (Right Side, Vertically Aligned)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Location: City, State, Country
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Location: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
                                       ),
-                                    )
-                                  : const Icon(Icons.refresh, color: Colors.white, size: 20),
-                              label: const Text(
-                                'Refresh Data',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                                      TextSpan(
+                                        text: _locationCityStateCountry,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF2563EB),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
+                                const SizedBox(height: 2),
+
+                                // Address: Full address (wrapping allowed)
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Address: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: _fullAddressString,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                elevation: 0,
-                              ),
+                                const SizedBox(height: 2),
+
+                                // Latitude
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Latitude: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: _formatCoordinate(_position?.latitude, true),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+
+                                // Longitude
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Longitude: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: _formatCoordinate(_position?.longitude, false),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+
+                                // Date & Time
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Date & Time: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: _currentDateTimeString,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -385,78 +471,6 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMetricTile(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAltitudeTile(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.landscape, color: Colors.white70, size: 22),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
