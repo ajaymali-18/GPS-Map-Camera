@@ -14,6 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      // TODO : change title name
       title: 'Flutter Demo',
       home: const CameraScreen(),
     );

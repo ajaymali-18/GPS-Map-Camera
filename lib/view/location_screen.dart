@@ -15,7 +15,8 @@ class LocationScreen extends StatefulWidget {
   State<LocationScreen> createState() => _LocationScreenState();
 }
 
-class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObserver {
+class _LocationScreenState extends State<LocationScreen>
+    with WidgetsBindingObserver {
   final LocationService _locationService = LocationService();
   Position? _position;
   Placemark? _placemark;
@@ -63,7 +64,8 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
       if (mounted) {
         setState(() {
           _error = error.toString();
-          _isLocationServiceDisabled = error is LocationServiceDisabledException;
+          _isLocationServiceDisabled =
+              error is LocationServiceDisabledException;
         });
       }
     } finally {
@@ -75,10 +77,15 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
     if (_placemark == null) {
       return _position != null ? 'Fetching location...' : 'Fetching...';
     }
-    final city = _placemark!.locality ?? _placemark!.subAdministrativeArea ?? '';
+    final city =
+        _placemark!.locality ?? _placemark!.subAdministrativeArea ?? '';
     final state = _placemark!.administrativeArea ?? '';
     final country = _placemark!.country ?? '';
-    final parts = [city, state, country].where((s) => s.trim().isNotEmpty).toList();
+    final parts = [
+      city,
+      state,
+      country,
+    ].where((s) => s.trim().isNotEmpty).toList();
     return parts.isNotEmpty ? parts.join(', ') : 'Unknown';
   }
 
@@ -166,26 +173,36 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                           color: Colors.black,
                           child: Center(
                             child: _isLoading
-                                ? const CircularProgressIndicator(color: Color(0xFF2563EB))
+                                ? const CircularProgressIndicator(
+                                    color: Color(0xFF2563EB),
+                                  )
                                 : Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
                                         _error ?? 'Location Unavailable',
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(color: Colors.white70),
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
                                       ),
                                       if (_isLocationServiceDisabled) ...[
                                         const SizedBox(height: 12),
                                         ElevatedButton.icon(
                                           onPressed: () async {
-                                            await _locationService.openLocationSettings();
+                                            await _locationService
+                                                .openLocationSettings();
                                             _loadLocation();
                                           },
-                                          icon: const Icon(Icons.settings, size: 16),
+                                          icon: const Icon(
+                                            Icons.settings,
+                                            size: 16,
+                                          ),
                                           label: const Text('Turn on Location'),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF2563EB),
+                                            backgroundColor: const Color(
+                                              0xFF2563EB,
+                                            ),
                                             foregroundColor: Colors.white,
                                           ),
                                         ),
@@ -217,7 +234,10 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.70),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          width: 1,
+                        ),
                         boxShadow: const [
                           BoxShadow(
                             color: Colors.black45,
@@ -233,11 +253,12 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                           GestureDetector(
                             onTap: _position == null && _error != null
                                 ? (_isLocationServiceDisabled
-                                    ? () async {
-                                        await _locationService.openLocationSettings();
-                                        _loadLocation();
-                                      }
-                                    : _loadLocation)
+                                      ? () async {
+                                          await _locationService
+                                              .openLocationSettings();
+                                          _loadLocation();
+                                        }
+                                      : _loadLocation)
                                 : null,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
@@ -252,10 +273,11 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                                               ? const SizedBox(
                                                   width: 24,
                                                   height: 24,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    color: Colors.white,
-                                                  ),
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Colors.white,
+                                                      ),
                                                 )
                                               : Icon(
                                                   _isLocationServiceDisabled
@@ -273,9 +295,10 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                                             _position!.longitude,
                                           ),
                                           initialZoom: 14,
-                                          interactionOptions: const InteractionOptions(
-                                            flags: InteractiveFlag.none,
-                                          ),
+                                          interactionOptions:
+                                              const InteractionOptions(
+                                                flags: InteractiveFlag.none,
+                                              ),
                                         ),
                                         children: [
                                           TileLayer(
@@ -380,7 +403,10 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                                         ),
                                       ),
                                       TextSpan(
-                                        text: _formatCoordinate(_position?.latitude, true),
+                                        text: _formatCoordinate(
+                                          _position?.latitude,
+                                          true,
+                                        ),
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 11,
@@ -407,7 +433,10 @@ class _LocationScreenState extends State<LocationScreen> with WidgetsBindingObse
                                         ),
                                       ),
                                       TextSpan(
-                                        text: _formatCoordinate(_position?.longitude, false),
+                                        text: _formatCoordinate(
+                                          _position?.longitude,
+                                          false,
+                                        ),
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 11,

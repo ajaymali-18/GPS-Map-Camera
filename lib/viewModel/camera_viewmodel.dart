@@ -1,3 +1,4 @@
+// TODO : Move it on model folder
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
