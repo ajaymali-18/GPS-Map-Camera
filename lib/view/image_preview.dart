@@ -24,7 +24,6 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
   int? _imageWidth;
   int? _imageHeight;
   int _fileSizeBytes = 0;
-  bool _showOverlay = true;
 
   @override
   void initState() {
@@ -352,13 +351,6 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Exif Metadata Info',
-            icon: const Icon(Icons.info_outline),
-            onPressed: _showExifDetailsSheet,
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -367,115 +359,81 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
               child: Image.file(widget.image),
             ),
           ),
-          if (_showOverlay)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: GestureDetector(
-                onTap: _showExifDetailsSheet,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        color: Color(0xFF9D4EDD),
-                        size: 24,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _isLoadingExif
-                            ? const Text(
-                                "Loading EXIF metadata...",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: GestureDetector(
+              onTap: _showExifDetailsSheet,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on,
+                      color: Color(0xFF9D4EDD),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _isLoadingExif
+                          ? const Text(
+                              "Loading EXIF metadata...",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _latitude != null && _longitude != null
+                                      ? "Lat: ${_latitude!.toStringAsFixed(6)}°, Lng: ${_longitude!.toStringAsFixed(6)}°"
+                                      : "No GPS EXIF recorded",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
+                                if (address.isNotEmpty)
                                   Text(
-                                    _latitude != null && _longitude != null
-                                        ? "Lat: ${_latitude!.toStringAsFixed(6)}°, Lng: ${_longitude!.toStringAsFixed(6)}°"
-                                        : "No GPS EXIF recorded",
+                                    address,
                                     style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white70,
+                                      fontSize: 12,
                                     ),
                                   ),
-                                  if (address.isNotEmpty)
-                                    Text(
-                                      address,
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.white70,
-                          size: 16,
-                        ),
-                        onPressed: _showExifDetailsSheet,
-                        tooltip: 'Details',
-                      ),
-                    ],
-                  ),
+                              ],
+                            ),
+                    ),
+                  ],
                 ),
               ),
             ),
+          ),
         ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 12, top: 4),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              IconButton(
-                tooltip: 'Exif Info',
-                onPressed: _showExifDetailsSheet,
-                icon: const Icon(
-                  Icons.info_outline,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Toggle Overlay',
-                onPressed: () {
-                  setState(() {
-                    _showOverlay = !_showOverlay;
-                  });
-                },
-                icon: Icon(
-                  _showOverlay
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
               IconButton(
                 tooltip: 'Delete Image',
                 onPressed: () => deleteImage(context),
                 icon: const Icon(
                   Icons.delete_outline,
                   color: Colors.redAccent,
-                  size: 30,
+                  size: 35,
                 ),
               ),
             ],

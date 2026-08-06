@@ -119,24 +119,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
                                   ],
                                 ),
                               ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _formatDate(modTime),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.info_outline,
-                                    color: Colors.white70,
-                                    size: 12,
-                                  ),
-                                ],
+                              child: Text(
+                                _formatDate(modTime),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
