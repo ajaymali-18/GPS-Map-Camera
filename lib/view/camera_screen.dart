@@ -11,7 +11,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:my_app2/services/location_service.dart';
 import 'package:my_app2/view/gallery_screen.dart';
 import 'package:my_app2/view/location_screen.dart';
+import 'package:my_app2/view/widgets/top_app_header.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../viewModel/camera_viewmodel.dart';
 
@@ -23,7 +25,6 @@ class CameraScreen extends StatefulWidget {
   @override
   State<CameraScreen> createState() => _CameraScreenState();
 }
-// Location Class
 
 class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver {
   final LocationService locationService = LocationService();
@@ -37,19 +38,44 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   bool _cameraPermissionDenied = false;
   bool _cameraPermissionPermanentlyDenied = false;
   bool _isLocationServiceDisabled = false;
+  File? _lastCapturedImage;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _startCamera();
+    _loadLastImage();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       loadLocation();
+      _loadLastImage();
     }
+  }
+
+  Future<void> _loadLastImage() async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final galleryDir = Directory("${appDir.path}/Gallery");
+      if (galleryDir.existsSync()) {
+        final files = galleryDir.listSync().whereType<File>().toList();
+        if (files.isNotEmpty) {
+          files.sort(
+            (newer, older) => older.lastModifiedSync().compareTo(
+              newer.lastModifiedSync(),
+            ),
+          );
+          if (mounted) {
+            setState(() {
+              _lastCapturedImage = files.first;
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _startCamera() async {
@@ -126,6 +152,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       context,
       MaterialPageRoute(builder: (_) => const GalleryScreen()),
     );
+    _loadLastImage();
   }
 
   Future<Uint8List> _createStampedPhoto(
@@ -319,47 +346,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     return wrappedLines;
   }
 
-  String _countryFlag(String? countryCode) {
-    if (countryCode == null || countryCode.length != 2) return '';
-
-    final code = countryCode.toUpperCase();
-    return String.fromCharCodes(
-      code.codeUnits.map((letter) => 0x1F1E6 + letter - 0x41),
-    );
-  }
-
-  String _formattedDateTime(DateTime value) {
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
-    final minute = value.minute.toString().padLeft(2, '0');
-    final period = value.hour >= 12 ? 'PM' : 'AM';
-
-    return '${weekdays[value.weekday - 1]}, ${value.day} '
-        '${months[value.month - 1]} ${value.year}, $hour:$minute $period';
-  }
-
   Future<void> loadLocation() async {
     if (mounted) {
       setState(() {
@@ -372,9 +358,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
       if (!mounted) return;
 
-      // Coordinates and the map do not depend on reverse geocoding. Show
-      // them immediately so a failed/slow address lookup cannot hide a valid
-      // GPS position.
       setState(() => position = currentPosition);
 
       try {
@@ -405,24 +388,54 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     super.dispose();
   }
 
+  String get _headerLocationBanner {
+    if (placemark != null) {
+      final street = placemark!.thoroughfare ?? placemark!.street ?? '';
+      final subLoc = placemark!.subLocality ?? placemark!.locality ?? '';
+      if (street.isNotEmpty && subLoc.isNotEmpty) {
+        return '$street & $subLoc';
+      } else if (street.isNotEmpty) {
+        return street;
+      } else if (subLoc.isNotEmpty) {
+        return subLoc;
+      }
+    }
+    return 'OPEN GPS CAMERA';
+  }
+
+  String _formatLatLongString(double val, bool isLat) {
+    final absVal = val.abs().toStringAsFixed(4);
+    final ref = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return '$absVal° $ref';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cameraError != null) {
       return Scaffold(
+        backgroundColor: Colors.black,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.camera_alt_outlined, size: 48),
+                const Icon(Icons.camera_alt_outlined, size: 48, color: Colors.white70),
                 const SizedBox(height: 12),
-                Text(_cameraError!, textAlign: TextAlign.center),
+                Text(
+                  _cameraError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _cameraPermissionPermanentlyDenied
                       ? openAppSettings
                       : _startCamera,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                  ),
                   child: Text(
                     _cameraPermissionPermanentlyDenied
                         ? 'Open Settings'
@@ -437,17 +450,28 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
         ),
       );
     }
+
     if (viewModel.controller == null ||
         !viewModel.controller!.value.isInitialized) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF2563EB),
+          ),
+        ),
+      );
     }
+
+    final latStr = position != null ? _formatLatLongString(position!.latitude, true) : '--';
+    final lngStr = position != null ? _formatLatLongString(position!.longitude, false) : '--';
+    final utcTimeStr = DateTime.now().toUtc().toString().split('.').first;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Native-camera style preview: it fills the complete portrait
-          // screen, including the space previously occupied by the AppBar.
+          // 1. Full Screen Camera Viewport
           Positioned.fill(
             child: GestureDetector(
               onScaleStart: (details) {
@@ -469,70 +493,86 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             ),
           ),
 
-          // Flash Button
+          // 2. Top Header Bar (Stitch Design)
           Positioned(
-            top: 16,
-            right: 16,
-            child: SafeArea(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black45,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  onPressed: () async {
-                    await viewModel.toggleFlash();
-                    setState(() {});
-                  },
-                  icon: Icon(
-                    viewModel.flashMode == FlashMode.off
-                        ? Icons.flash_off
-                        : viewModel.flashMode == FlashMode.always
-                        ? Icons.flash_on
-                        : Icons.flashlight_on,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                  tooltip: viewModel.flashMode == FlashMode.off
-                      ? 'Flash Off'
+            top: 0,
+            left: 0,
+            right: 0,
+            child: TopAppHeader(
+              title: _headerLocationBanner,
+              onFlashPressed: () async {
+                await viewModel.toggleFlash();
+                setState(() {});
+              },
+              leading: IconButton(
+                onPressed: () async {
+                  await viewModel.toggleFlash();
+                  setState(() {});
+                },
+                icon: Icon(
+                  viewModel.flashMode == FlashMode.off
+                      ? Icons.bolt
                       : viewModel.flashMode == FlashMode.always
-                      ? 'Flash On'
-                      : 'Torch On',
+                      ? Icons.flash_on
+                      : Icons.flashlight_on,
+                  color: viewModel.flashMode == FlashMode.off
+                      ? Colors.white
+                      : Colors.amberAccent,
+                  size: 26,
                 ),
+                tooltip: 'Toggle Flash',
               ),
             ),
           ),
 
-          // Map ---
+          // 3. Floating Glassmorphism Location Card (Stitch Design)
           Positioned(
-            bottom: 150,
-            left: 12,
-            right: 12,
-
+            bottom: 160,
+            left: 16,
+            right: 16,
             child: Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.black54,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xDD1C1C1C),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black45,
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Small Map ------------>
+                  // Map / Location Thumbnail (Square 64x64)
                   GestureDetector(
-                    onTap: position == null && _locationError != null
-                        ? loadLocation
-                        : null,
+                    onTap: position == null && _locationError != null ? loadLocation : null,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       child: SizedBox(
-                        width: 100,
-                        height: 100,
+                        width: 64,
+                        height: 64,
                         child: position == null
-                            ? Center(
-                                child: _locationError == null
-                                    ? const CircularProgressIndicator()
-                                    : const Icon(
-                                        Icons.location_off,
-                                        color: Colors.white,
-                                      ),
+                            ? Container(
+                                color: Colors.white10,
+                                child: Center(
+                                  child: _locationError == null
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.location_off,
+                                          color: Colors.white70,
+                                          size: 24,
+                                        ),
+                                ),
                               )
                             : FlutterMap(
                                 options: MapOptions(
@@ -559,17 +599,12 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                                           position!.latitude,
                                           position!.longitude,
                                         ),
-                                        width: 40,
-                                        height: 40,
+                                        width: 24,
+                                        height: 24,
                                         child: const Icon(
                                           Icons.location_pin,
-                                          color: Color.fromARGB(
-                                            255,
-                                            235,
-                                            101,
-                                            92,
-                                          ),
-                                          size: 35,
+                                          color: Colors.redAccent,
+                                          size: 24,
                                         ),
                                       ),
                                     ],
@@ -582,72 +617,44 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
                   const SizedBox(width: 12),
 
-                  // Location Information
+                  // Location Details Column
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _locationError == null
-                              ? "${placemark?.locality ?? '--'}, ${placemark?.administrativeArea ?? '--'}, ${placemark?.country ?? '--'} ${_countryFlag(placemark?.isoCountryCode)}"
-                              : _isLocationServiceDisabled
-                              ? 'Device Location is turned off'
-                              : 'Location unavailable — tap the map to retry',
+                          placemark != null
+                              ? '${placemark?.street ?? placemark?.subLocality ?? ''}, ${placemark?.locality ?? placemark?.country ?? ''}'
+                              : _locationError != null
+                                  ? (_isLocationServiceDisabled
+                                      ? 'Location Service Turned Off'
+                                      : 'Tap map to retry location')
+                                  : 'Fetching location...',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (position == null && _locationError != null)
-                          TextButton.icon(
-                            onPressed: () async {
-                              if (_isLocationServiceDisabled) {
-                                await locationService.openLocationSettings();
-                              }
-                              await loadLocation();
-                            },
-                            icon: const Icon(Icons.settings, size: 16),
-                            label: Text(
-                              _isLocationServiceDisabled
-                                  ? 'Turn on Location'
-                                  : 'Try again',
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(0, 30),
-                            ),
-                          ),
-
+                        const SizedBox(height: 3),
                         Text(
-                          "${placemark?.street ?? ''}, "
-                          "${placemark?.subLocality ?? ''}, "
-                          "${placemark?.locality ?? ''}, "
-                          "${placemark?.administrativeArea ?? ''}, "
-                          "${placemark?.postalCode ?? ''}, "
-                          "${placemark?.country ?? ''}",
+                          '$latStr, $lngStr',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Colors.white70,
                             fontSize: 12,
+                            fontFamily: 'monospace',
                           ),
-                          maxLines: 5,
-                          overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 3),
                         Text(
-                          "Latitude : ${position?.latitude ?? '--'}°",
-                          style: const TextStyle(color: Colors.white),
-                        ),
-
-                        Text(
-                          "Longitude : ${position?.longitude ?? '--'}°",
-                          style: const TextStyle(color: Colors.white),
-                        ),
-
-                        Text(
-                          _formattedDateTime(DateTime.now()),
-                          style: const TextStyle(color: Colors.white),
+                          '$utcTimeStr UTC',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -657,207 +664,179 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             ),
           ),
 
-          // Zoom Buttons (1x & 2x)
+          // 4. Zoom Pill Switcher (Stitch Design: 0.5x, 1x, 2x)
           Positioned(
             bottom: 100,
             left: 0,
             right: 0,
             child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Gesture Dectector for Buttons
-                  GestureDetector(
-                    onTap: () async {
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0x99262626),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildZoomPillOption('0.5x', viewModel.currentZoom <= 0.75, () async {
+                      await viewModel.setZoom(viewModel.minZoom);
+                      if (mounted) setState(() {});
+                    }),
+                    _buildZoomPillOption('1x', viewModel.currentZoom > 0.75 && viewModel.currentZoom <= 1.5, () async {
                       await viewModel.setZoom(1.0);
                       if (mounted) setState(() {});
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: viewModel.currentZoom <= 1.0
-                            ? const Color(0xFF3C096C)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        '1x',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: viewModel.currentZoom <= 1.0
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () async {
-                      await viewModel.setZoom(2.0);
+                    }),
+                    _buildZoomPillOption('2x', viewModel.currentZoom > 1.5, () async {
+                      await viewModel.setZoom(2.0.clamp(viewModel.minZoom, viewModel.maxZoom));
                       if (mounted) setState(() {});
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: viewModel.currentZoom > 1.0
-                            ? const Color(0xFF3C096C)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        '2x',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: viewModel.currentZoom > 1.0
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                    }),
+                  ],
+                ),
               ),
             ),
           ),
 
+          // 5. Bottom Controls Row (Stitch Design)
           Align(
             alignment: Alignment.bottomCenter,
             child: SafeArea(
               top: false,
-              minimum: const EdgeInsets.only(bottom: 16),
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 5),
+              child: Container(
+                height: 80,
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                color: const Color(0xFF0F0F0F),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Gallery
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FloatingActionButton(
-                          elevation: 0,
-                          onPressed: _openGallery,
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF3C096C),
-                          child: const Icon(Icons.image),
+                    // Left: Last Photo Thumbnail / Gallery Trigger
+                    GestureDetector(
+                      onTap: _openGallery,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white30, width: 1.5),
                         ),
-                      ],
+                        child: ClipOval(
+                          child: _lastCapturedImage != null
+                              ? Image.file(_lastCapturedImage!, fit: BoxFit.cover)
+                              : Container(
+                                  color: Colors.white12,
+                                  child: const Icon(
+                                    Icons.image_outlined,
+                                    color: Colors.white70,
+                                    size: 22,
+                                  ),
+                                ),
+                        ),
+                      ),
                     ),
 
-                    // Camera
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FloatingActionButton(
-                          elevation: 0,
+                    // Center: Shutter Ring Button
+                    GestureDetector(
+                      onTap: _isCapturing
+                          ? null
+                          : () async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              final XFile? image = await viewModel.capturePhoto();
 
-                          onPressed: _isCapturing
-                              ? null
-                              : () async {
-                                  final XFile? image = await viewModel
-                                      .capturePhoto();
+                              if (image == null) {
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not capture photo'),
+                                  ),
+                                );
+                                return;
+                              }
 
-                                  if (image == null) {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(
-                                      this.context,
-                                    ).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Could not capture photo',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-
-                                  setState(() => _isCapturing = true);
-                                  var didSave = false;
-                                  try {
-                                    final mapSnapshot =
-                                        await _createMapSnapshot();
-                                    final stampedPhoto =
-                                        await _createStampedPhoto(
-                                          image,
-                                          mapSnapshot,
-                                        );
-                                    await viewModel.saveImageBytes(
-                                      stampedPhoto,
-                                      position: position,
-                                    );
-                                    didSave = true;
-                                  } catch (error) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        this.context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Could not save photo: $error',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  } finally {
-                                    if (mounted) {
-                                      setState(() => _isCapturing = false);
-                                    }
-                                  }
-
-                                  if (!mounted || !didSave) return;
-
-                                  ScaffoldMessenger.of(
-                                    this.context,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Photo saved successfully'),
-                                      duration: Duration(seconds: 2),
+                              setState(() => _isCapturing = true);
+                              var didSave = false;
+                              try {
+                                final mapSnapshot = await _createMapSnapshot();
+                                final stampedPhoto = await _createStampedPhoto(
+                                  image,
+                                  mapSnapshot,
+                                );
+                                await viewModel.saveImageBytes(
+                                  stampedPhoto,
+                                  position: position,
+                                );
+                                didSave = true;
+                              } catch (error) {
+                                if (mounted) {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Could not save photo: $error'),
                                     ),
                                   );
-                                },
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isCapturing = false);
+                                  _loadLastImage();
+                                }
+                              }
 
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF3C096C),
-                          shape: const CircleBorder(
-                            side: BorderSide(color: Colors.white),
-                          ),
-                          child: const Icon(Icons.camera_alt),
+                              if (!mounted || !didSave) return;
+
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Photo saved successfully'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                      child: Container(
+                        width: 68,
+                        height: 68,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
                         ),
-                      ],
+                        child: Center(
+                          child: Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: _isCapturing ? Colors.grey : Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
 
-                    // Location
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FloatingActionButton(
-                          elevation: 0,
-                          onPressed: () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const LocationScreen(),
-                              ),
-                            );
-                            if (mounted) {
-                              SystemChrome.setEnabledSystemUIMode(
-                                SystemUiMode.immersiveSticky,
-                              );
-                            }
-                          },
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF3C096C),
-                          child: const Icon(Icons.location_on),
+                    // Right: Location Inspector Trigger
+                    GestureDetector(
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const LocationScreen(),
+                          ),
+                        );
+                        if (mounted) {
+                          SystemChrome.setEnabledSystemUIMode(
+                            SystemUiMode.immersiveSticky,
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0x33262626),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 1),
                         ),
-                      ],
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -865,6 +844,28 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildZoomPillOption(String text, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2563EB) : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white70,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }

@@ -54,7 +54,6 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
           _latitude = latLong.latitude;
           _longitude = latLong.longitude;
         } else {
-          // Fallback parsing from attributes
           final latAttr = attributes['GPSLatitude'];
           final latRef = attributes['GPSLatitudeRef'];
           final lngAttr = attributes['GPSLongitude'];
@@ -114,12 +113,16 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Delete Image"),
-        content: const Text("Are you sure you want to delete this image?"),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text("Delete Image", style: TextStyle(color: Colors.white)),
+        content: const Text(
+          "Are you sure you want to delete this image?",
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
+            child: const Text("Cancel", style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -147,7 +150,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
   void _showExifDetailsSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: const Color(0xFF181818),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -184,7 +187,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                       height: 4,
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.grey[600],
+                        color: Colors.white24,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -246,7 +249,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                       "${_exifData['GPSAltitude']} m",
                     ),
                   if (_exifData.isNotEmpty) ...[
-                    const Divider(color: Colors.white24, height: 24),
+                    const Divider(color: Colors.white12, height: 24),
                     const Text(
                       "Raw EXIF Tags",
                       style: TextStyle(
@@ -301,7 +304,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xFF9D4EDD), size: 22),
+          Icon(icon, color: const Color(0xFF2563EB), size: 22),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -342,7 +345,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("Preview"),
+        title: const Text("Photo Preview"),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle.light,
@@ -360,26 +363,29 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
             ),
           ),
           Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
+            left: 16,
+            right: 16,
+            bottom: 16,
             child: GestureDetector(
               onTap: _showExifDetailsSheet,
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24),
+                  color: const Color(0xDD1C1C1C),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black45, blurRadius: 10),
+                  ],
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.location_on,
-                      color: Color(0xFF9D4EDD),
+                      color: Color(0xFF2563EB),
                       size: 24,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: _isLoadingExif
                           ? const Text(
@@ -414,6 +420,11 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                               ],
                             ),
                     ),
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
@@ -422,8 +433,9 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
         ],
       ),
       bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12, top: 4),
+        child: Container(
+          color: const Color(0xFF0F0F0F),
+          height: 60,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -433,7 +445,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                 icon: const Icon(
                   Icons.delete_outline,
                   color: Colors.redAccent,
-                  size: 35,
+                  size: 28,
                 ),
               ),
             ],
