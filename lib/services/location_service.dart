@@ -7,8 +7,7 @@ class LocationService {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Request app permission before checking the device Location switch. This
-    // ensures a new installation shows Android's permission prompt.
+    // Request app permission before checking the device Location.
     permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
