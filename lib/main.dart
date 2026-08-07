@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       // TODO : change title name
-      title: 'Flutter Demo',
+      title: 'Open GPS Camera',
       home: const CameraScreen(),
     );
   }

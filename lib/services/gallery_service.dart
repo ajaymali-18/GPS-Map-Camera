@@ -3,19 +3,29 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:native_exif/native_exif.dart';
+import 'package:my_app2/utils/formatters.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 
 class GalleryService {
-  String _formatExifDate(DateTime dt) {
-    final y = dt.year.toString().padLeft(4, '0');
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    final ss = dt.second.toString().padLeft(2, '0');
-    return '$y:$m:$d $hh:$mm:$ss';
+  Future<File?> getLastCapturedImage() async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final galleryDir = Directory("${appDir.path}/Gallery");
+      if (galleryDir.existsSync()) {
+        final files = galleryDir.listSync().whereType<File>().toList();
+        if (files.isNotEmpty) {
+          files.sort(
+            (newer, older) => older.lastModifiedSync().compareTo(
+              newer.lastModifiedSync(),
+            ),
+          );
+          return files.first;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<void> saveImageBytes(Uint8List bytes, {Position? position}) async {
@@ -35,7 +45,7 @@ class GalleryService {
           final exif = await Exif.fromPath(filePath);
           final lat = position.latitude;
           final lng = position.longitude;
-          final nowString = _formatExifDate(DateTime.now());
+          final nowString = AppFormatters.formatExifDate(DateTime.now());
 
           final attributes = <String, String>{
             'GPSLatitude': lat.toString(),

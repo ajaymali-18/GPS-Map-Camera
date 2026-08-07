@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:my_app2/utils/formatters.dart';
 import 'package:my_app2/view/image_preview.dart';
 import 'package:my_app2/view/location_screen.dart';
 import 'package:my_app2/view/widgets/bottom_nav_dock.dart';
@@ -48,27 +49,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
   }
 
-  String _formatStitchDate(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final fileDate = DateTime(dt.year, dt.month, dt.day);
 
-    if (fileDate == today) {
-      final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-      final minute = dt.minute.toString().padLeft(2, '0');
-      final period = dt.hour >= 12 ? 'PM' : 'AM';
-      return '${hour.toString().padLeft(2, '0')}:$minute $period';
-    } else if (fileDate == yesterday) {
-      return 'YEST';
-    } else {
-      const monthAbbrs = [
-        'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-        'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
-      ];
-      return '${monthAbbrs[dt.month - 1]} ${dt.day}';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +120,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      _formatStitchDate(modTime),
+                                      AppFormatters.formatStitchDate(modTime),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 11,
