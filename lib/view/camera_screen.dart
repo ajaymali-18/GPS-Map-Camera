@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:my_app2/models/model.dart';
 import 'package:my_app2/services/gallery_service.dart';
 import 'package:my_app2/services/location_service.dart';
 import 'package:my_app2/services/map_tile_service.dart';
@@ -21,8 +22,6 @@ import 'package:my_app2/view/widgets/zoom_pill_switcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../viewModel/camera_viewmodel.dart';
 
-
-
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
 
@@ -36,8 +35,19 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   final MapTileService mapTileService = MapTileService();
   final WatermarkService watermarkService = WatermarkService();
   final CameraViewModel viewModel = CameraViewModel();
-  Position? position;
-  Placemark? placemark;
+
+  // Domain Models
+  final LocationModel locationModel = LocationModel();
+  PhotoModel? _lastCapturedPhoto;
+
+  Position? get position => locationModel.position;
+  set position(Position? val) => locationModel.position = val;
+
+  Placemark? get placemark => locationModel.placemark;
+  set placemark(Placemark? val) => locationModel.placemark = val;
+
+  File? get _lastCapturedImage => _lastCapturedPhoto?.file;
+
   String? _cameraError;
   String? _locationError;
   bool _isCapturing = false;
@@ -45,7 +55,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   bool _cameraPermissionDenied = false;
   bool _cameraPermissionPermanentlyDenied = false;
   bool _isLocationServiceDisabled = false;
-  File? _lastCapturedImage;
 
   @override
   void initState() {
@@ -64,10 +73,10 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   }
 
   Future<void> _loadLastImage() async {
-    final image = await galleryService.getLastCapturedImage();
+    final photo = await galleryService.getLastCapturedImage();
     if (mounted) {
       setState(() {
-        _lastCapturedImage = image;
+        _lastCapturedPhoto = photo;
       });
     }
   }

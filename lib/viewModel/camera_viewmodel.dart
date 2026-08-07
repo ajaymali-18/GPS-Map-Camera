@@ -3,18 +3,27 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
+import '../models/camera_model.dart';
 import '../services/gallery_service.dart';
 
 class CameraViewModel {
-  // Flash & Zoom
-  double baseZoom = 1.0;
-  double minZoom = 1.0;
-  double maxZoom = 1.0;
-  double currentZoom = 1.0;
+  // Camera settings model
+  final CameraModel cameraModel = CameraModel();
 
-  // touch screen zoom variable
+  double get baseZoom => cameraModel.baseZoom;
+  set baseZoom(double value) => cameraModel.baseZoom = value;
 
-  FlashMode flashMode = FlashMode.off;
+  double get minZoom => cameraModel.minZoom;
+  set minZoom(double value) => cameraModel.minZoom = value;
+
+  double get maxZoom => cameraModel.maxZoom;
+  set maxZoom(double value) => cameraModel.maxZoom = value;
+
+  double get currentZoom => cameraModel.currentZoom;
+  set currentZoom(double value) => cameraModel.currentZoom = value;
+
+  FlashMode get flashMode => cameraModel.flashMode;
+  set flashMode(FlashMode value) => cameraModel.flashMode = value;
 
   final GalleryService galleryService = GalleryService();
 

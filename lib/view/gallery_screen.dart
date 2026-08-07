@@ -1,13 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:my_app2/models/photo_model.dart';
+import 'package:my_app2/services/gallery_service.dart';
 import 'package:my_app2/utils/formatters.dart';
 import 'package:my_app2/view/image_preview.dart';
 import 'package:my_app2/view/location_screen.dart';
 import 'package:my_app2/view/widgets/bottom_nav_dock.dart';
 import 'package:my_app2/view/widgets/top_app_header.dart';
-import 'package:path_provider/path_provider.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
@@ -17,7 +16,8 @@ class GalleryScreen extends StatefulWidget {
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
-  List<File> images = [];
+  final GalleryService _galleryService = GalleryService();
+  List<PhotoModel> images = [];
 
   @override
   void initState() {
@@ -27,26 +27,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Future<void> loadImage() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final galleryDir = Directory("${appDir.path}/Gallery");
+    final photos = await _galleryService.getGalleryPhotos();
     if (!mounted) return;
 
-    if (galleryDir.existsSync()) {
-      final files = galleryDir.listSync().whereType<File>().toList();
-      files.sort(
-        (newer, older) => older.lastModifiedSync().compareTo(
-          newer.lastModifiedSync(),
-        ),
-      );
-
-      setState(() {
-        images = files;
-      });
-    } else {
-      setState(() {
-        images = [];
-      });
-    }
+    setState(() {
+      images = photos;
+    });
   }
 
 
@@ -83,8 +69,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       ),
                       itemCount: images.length,
                       itemBuilder: (context, index) {
-                        final file = images[index];
-                        final modTime = file.lastModifiedSync();
+                        final photo = images[index];
+                        final file = photo.file;
+                        final modTime = photo.modifiedAt;
 
                         return GestureDetector(
                           onTap: () async {

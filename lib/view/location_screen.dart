@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:my_app2/models/model.dart';
 import 'package:my_app2/services/location_service.dart';
 import 'package:my_app2/utils/formatters.dart';
 import 'package:my_app2/view/gallery_screen.dart';
@@ -20,8 +21,16 @@ class LocationScreen extends StatefulWidget {
 class _LocationScreenState extends State<LocationScreen>
     with WidgetsBindingObserver {
   final LocationService _locationService = LocationService();
-  Position? _position;
-  Placemark? _placemark;
+
+  // Location domain model
+  final LocationModel _locationModel = LocationModel();
+
+  Position? get _position => _locationModel.position;
+  set _position(Position? val) => _locationModel.position = val;
+
+  Placemark? get _placemark => _locationModel.placemark;
+  set _placemark(Placemark? val) => _locationModel.placemark = val;
+
   String? _error;
   bool _isLoading = true;
   final MapController _mapController = MapController();

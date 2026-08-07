@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:native_exif/native_exif.dart';
+import 'package:my_app2/models/photo_model.dart';
 import 'package:my_app2/utils/formatters.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 
 class GalleryService {
-  Future<File?> getLastCapturedImage() async {
+  Future<PhotoModel?> getLastCapturedImage() async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final galleryDir = Directory("${appDir.path}/Gallery");
@@ -21,11 +22,28 @@ class GalleryService {
               newer.lastModifiedSync(),
             ),
           );
-          return files.first;
+          return PhotoModel(file: files.first);
         }
       }
     } catch (_) {}
     return null;
+  }
+
+  Future<List<PhotoModel>> getGalleryPhotos() async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final galleryDir = Directory("${appDir.path}/Gallery");
+      if (galleryDir.existsSync()) {
+        final files = galleryDir.listSync().whereType<File>().toList();
+        files.sort(
+          (newer, older) => older.lastModifiedSync().compareTo(
+            newer.lastModifiedSync(),
+          ),
+        );
+        return files.map((file) => PhotoModel(file: file)).toList();
+      }
+    } catch (_) {}
+    return [];
   }
 
   Future<void> saveImageBytes(Uint8List bytes, {Position? position}) async {
