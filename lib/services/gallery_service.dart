@@ -47,6 +47,7 @@ class GalleryService {
   }
 
   Future<void> saveImageBytes(Uint8List bytes, {Position? position}) async {
+    final swGalTotal = Stopwatch()..start();
     final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}.jpg';
     try {
       final appDirectory = await getApplicationDocumentsDirectory();
@@ -56,9 +57,14 @@ class GalleryService {
       await galleryDirectory.create(recursive: true);
       final filePath = path.join(galleryDirectory.path, fileName);
       final file = File(filePath);
+
+      final swWrite = Stopwatch()..start();
       await file.writeAsBytes(bytes);
+      swWrite.stop();
+      debugPrint('⏱️ local file write: ${swWrite.elapsedMilliseconds} ms (${(bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(2)} MB)');
 
       if (position != null) {
+        final swExif = Stopwatch()..start();
         try {
           final exif = await Exif.fromPath(filePath);
           final lat = position.latitude;
@@ -91,14 +97,19 @@ class GalleryService {
         } catch (exifError) {
           debugPrint("EXIF Write Error: $exifError");
         }
+        swExif.stop();
+        debugPrint('⏱️ EXIF write & verify: ${swExif.elapsedMilliseconds} ms');
       }
 
+      final swSaver = Stopwatch()..start();
       final result = await SaverGallery.saveFile(
         filePath: filePath,
         fileName: fileName,
         albumPath: 'GPS Camera',
         skipIfExists: false,
       );
+      swSaver.stop();
+      debugPrint('⏱️ gallery save (SaverGallery): ${swSaver.elapsedMilliseconds} ms');
 
       if (!result.isSuccess) {
         throw StateError(
@@ -111,5 +122,7 @@ class GalleryService {
       debugPrint("Save Error: $e");
       rethrow;
     }
+    swGalTotal.stop();
+    debugPrint('⏱️ total gallery service time: ${swGalTotal.elapsedMilliseconds} ms');
   }
 }

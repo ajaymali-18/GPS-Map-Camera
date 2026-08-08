@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image/image.dart' as img;
@@ -15,13 +15,27 @@ class WatermarkService {
     Placemark? placemark,
     Position? position,
   }) async {
+    final swWMTotal = Stopwatch()..start();
+
+    final swRead = Stopwatch()..start();
     final source = await File(image.path).readAsBytes();
+    swRead.stop();
+    debugPrint('⏱️ image file read: ${swRead.elapsedMilliseconds} ms (${(source.lengthInBytes / (1024 * 1024)).toStringAsFixed(2)} MB)');
+
+    final swDecode = Stopwatch()..start();
     final decoded = img.decodeImage(source);
+    swDecode.stop();
     if (decoded == null) {
       throw StateError('The captured photo could not be decoded.');
     }
+    debugPrint('⏱️ image decode: ${swDecode.elapsedMilliseconds} ms (${decoded.width}x${decoded.height}) [UI ISOLATE BLOCKING]');
 
+    final swBake = Stopwatch()..start();
     final photo = img.bakeOrientation(decoded);
+    swBake.stop();
+    debugPrint('⏱️ bake orientation: ${swBake.elapsedMilliseconds} ms [UI ISOLATE BLOCKING]');
+
+    final swRender = Stopwatch()..start();
     final timestamp = DateTime.now();
     final locationCityStateCountry =
         AppFormatters.formatLocationCityStateCountry(placemark, position);
@@ -91,7 +105,16 @@ class WatermarkService {
         color: img.ColorRgb8(255, 255, 255),
       );
     }
+    swRender.stop();
+    debugPrint('⏱️ watermark panel & text render: ${swRender.elapsedMilliseconds} ms [UI ISOLATE BLOCKING]');
 
-    return Uint8List.fromList(img.encodeJpg(photo, quality: 95));
+    final swEncode = Stopwatch()..start();
+    final resultBytes = Uint8List.fromList(img.encodeJpg(photo, quality: 95));
+    swEncode.stop();
+    debugPrint('⏱️ image encode (JPG 95%): ${swEncode.elapsedMilliseconds} ms (${(resultBytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(2)} MB) [UI ISOLATE BLOCKING]');
+
+    swWMTotal.stop();
+    debugPrint('⏱️ total watermark service time: ${swWMTotal.elapsedMilliseconds} ms');
+    return resultBytes;
   }
 }

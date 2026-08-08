@@ -22,6 +22,9 @@ import 'package:my_app2/view/widgets/zoom_pill_switcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../viewModel/camera_viewmodel.dart';
 
+import 'package:my_app2/services/camera_shutter_sound.dart';
+import 'package:my_app2/view/widgets/capture_loading_overlay.dart';
+
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
 
@@ -51,6 +54,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   String? _cameraError;
   String? _locationError;
   bool _isCapturing = false;
+  String _captureStatus = 'Capturing photo...';
   bool _isInitializingCamera = false;
   bool _cameraPermissionDenied = false;
   bool _cameraPermissionPermanentlyDenied = false;
@@ -303,48 +307,109 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             isCapturing: _isCapturing,
             onGalleryTap: _openGallery,
             onShutterTap: () async {
+              if (_isCapturing) return;
+              final totalTimer = Stopwatch()..start();
+              debugPrint('--------------------------------------------------');
+              debugPrint('📸 CAPTURE START');
+
+              setState(() {
+                _isCapturing = true;
+                _captureStatus = 'Capturing photo...';
+              });
+
               final messenger = ScaffoldMessenger.of(context);
-              final XFile? image = await viewModel.capturePhoto();
-
-              if (image == null) {
-                if (!mounted) return;
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Could not capture photo'),
-                  ),
-                );
-                return;
-              }
-
-              setState(() => _isCapturing = true);
               var didSave = false;
+
               try {
+                final swTake = Stopwatch()..start();
+                final XFile? image = await viewModel.capturePhoto();
+                swTake.stop();
+                debugPrint('⏱️ takePicture: ${swTake.elapsedMilliseconds} ms');
+
+                if (image == null) {
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not capture photo. Please try again.'),
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                // Play shutter sound on successful photo capture
+                CameraShutterSound.play();
+
+                if (mounted) {
+                  setState(() {
+                    _captureStatus = 'Processing photo...';
+                  });
+                }
+
+                final swMap = Stopwatch()..start();
                 final mapSnapshot = await mapTileService.createMapSnapshot(position);
+                swMap.stop();
+                debugPrint('⏱️ map snapshot total: ${swMap.elapsedMilliseconds} ms');
+
+                if (mounted) {
+                  setState(() {
+                    _captureStatus = 'Adding location...';
+                  });
+                }
+
+                final swWM = Stopwatch()..start();
                 final stampedPhoto = await watermarkService.createStampedPhoto(
                   image,
                   mapSnapshot,
                   placemark: placemark,
                   position: position,
                 );
+                swWM.stop();
+                debugPrint('⏱️ watermark total: ${swWM.elapsedMilliseconds} ms');
+
+                if (mounted) {
+                  setState(() {
+                    _captureStatus = 'Saving to Gallery...';
+                  });
+                }
+
+                final swSave = Stopwatch()..start();
                 await viewModel.saveImageBytes(
                   stampedPhoto,
                   position: position,
                 );
+                swSave.stop();
+                debugPrint('⏱️ gallery save total: ${swSave.elapsedMilliseconds} ms');
                 didSave = true;
+
+                if (mounted) {
+                  setState(() {
+                    _captureStatus = 'Photo saved';
+                  });
+                }
               } catch (error) {
                 if (mounted) {
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text('Could not save photo: $error'),
+                      content: Text('Unable to save photo: $error'),
                     ),
                   );
                 }
               } finally {
+                final swUI = Stopwatch()..start();
                 if (mounted) {
-                  setState(() => _isCapturing = false);
+                  setState(() {
+                    _isCapturing = false;
+                  });
                   _loadLastImage();
                 }
+                swUI.stop();
+                debugPrint('⏱️ UI reset & load last image: ${swUI.elapsedMilliseconds} ms');
               }
+
+              totalTimer.stop();
+              debugPrint('🚀 TOTAL CAPTURE TIME: ${totalTimer.elapsedMilliseconds} ms');
+              debugPrint('--------------------------------------------------');
 
               if (!mounted || !didSave) return;
 
@@ -367,6 +432,12 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                 );
               }
             },
+          ),
+
+          // 6. Capture Processing Loading Overlay
+          CaptureLoadingOverlay(
+            isCapturing: _isCapturing,
+            statusText: _captureStatus,
           ),
         ],
       ),

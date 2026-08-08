@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
@@ -7,6 +8,7 @@ import 'package:image/image.dart' as img;
 class MapTileService {
   Future<img.Image?> createMapSnapshot(Position? position) async {
     if (position == null) return null;
+    final swMapTotal = Stopwatch()..start();
 
     const zoom = 15;
     const tileSize = 256;
@@ -47,13 +49,18 @@ class MapTileService {
       }
     }
 
+    final swFetch = Stopwatch()..start();
     final tileImages = await Future.wait([
       for (var y = -1; y <= 1; y++)
         for (var x = -1; x <= 1; x++)
           fetchTile(centerTileX + x, centerTileY + y),
     ]);
+    swFetch.stop();
+    debugPrint('⏱️ map tile HTTP fetch & decode: ${swFetch.elapsedMilliseconds} ms');
+
     if (tileImages.every((tile) => tile == null)) return null;
 
+    final swComposite = Stopwatch()..start();
     final canvas = img.Image(width: tileSize * 3, height: tileSize * 3);
     for (var index = 0; index < tileImages.length; index++) {
       final tile = tileImages[index];
@@ -88,6 +95,11 @@ class MapTileService {
       color: img.ColorRgb8(220, 45, 45),
       antialias: true,
     );
+    swComposite.stop();
+    debugPrint('⏱️ map tile composition & crop: ${swComposite.elapsedMilliseconds} ms');
+
+    swMapTotal.stop();
+    debugPrint('⏱️ total map snapshot time: ${swMapTotal.elapsedMilliseconds} ms');
     return snapshot;
   }
 }
