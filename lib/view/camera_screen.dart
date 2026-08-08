@@ -23,7 +23,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../viewModel/camera_viewmodel.dart';
 
 import 'package:my_app2/services/camera_shutter_sound.dart';
-import 'package:my_app2/view/widgets/capture_loading_overlay.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -54,11 +53,25 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   String? _cameraError;
   String? _locationError;
   bool _isCapturing = false;
-  String _captureStatus = 'Capturing photo...';
+  bool _showShutterFlash = false;
   bool _isInitializingCamera = false;
   bool _cameraPermissionDenied = false;
   bool _cameraPermissionPermanentlyDenied = false;
   bool _isLocationServiceDisabled = false;
+
+  void _triggerShutterFlash() {
+    if (!mounted) return;
+    setState(() {
+      _showShutterFlash = true;
+    });
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) {
+        setState(() {
+          _showShutterFlash = false;
+        });
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -244,6 +257,19 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             },
           ),
 
+          // 1b. Camera Shutter Flash Animation Overlay
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _showShutterFlash ? 0.9 : 0.0,
+                duration: Duration(milliseconds: _showShutterFlash ? 20 : 130),
+                child: Container(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+
           // 2. Top Header Bar (Stitch Design)
           Positioned(
             top: 0,
@@ -314,7 +340,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
               setState(() {
                 _isCapturing = true;
-                _captureStatus = 'Capturing photo...';
               });
 
               final messenger = ScaffoldMessenger.of(context);
@@ -337,25 +362,14 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                   return;
                 }
 
-                // Play shutter sound on successful photo capture
+                // Play shutter sound & trigger shutter flash animation on successful photo capture
                 CameraShutterSound.play();
-
-                if (mounted) {
-                  setState(() {
-                    _captureStatus = 'Processing photo...';
-                  });
-                }
+                _triggerShutterFlash();
 
                 final swMap = Stopwatch()..start();
                 final mapSnapshot = await mapTileService.createMapSnapshot(position);
                 swMap.stop();
                 debugPrint('⏱️ map snapshot total: ${swMap.elapsedMilliseconds} ms');
-
-                if (mounted) {
-                  setState(() {
-                    _captureStatus = 'Adding location...';
-                  });
-                }
 
                 final swWM = Stopwatch()..start();
                 final stampedPhoto = await watermarkService.createStampedPhoto(
@@ -367,12 +381,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                 swWM.stop();
                 debugPrint('⏱️ watermark total: ${swWM.elapsedMilliseconds} ms');
 
-                if (mounted) {
-                  setState(() {
-                    _captureStatus = 'Saving to Gallery...';
-                  });
-                }
-
                 final swSave = Stopwatch()..start();
                 await viewModel.saveImageBytes(
                   stampedPhoto,
@@ -381,12 +389,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                 swSave.stop();
                 debugPrint('⏱️ gallery save total: ${swSave.elapsedMilliseconds} ms');
                 didSave = true;
-
-                if (mounted) {
-                  setState(() {
-                    _captureStatus = 'Photo saved';
-                  });
-                }
               } catch (error) {
                 if (mounted) {
                   messenger.showSnackBar(
@@ -432,12 +434,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                 );
               }
             },
-          ),
-
-          // 6. Capture Processing Loading Overlay
-          CaptureLoadingOverlay(
-            isCapturing: _isCapturing,
-            statusText: _captureStatus,
           ),
         ],
       ),
