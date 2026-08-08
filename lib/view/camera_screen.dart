@@ -248,10 +248,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             child: TopAppHeader(
               title: '',
               trailing: const SizedBox(width: 48),
-              onFlashPressed: () async {
-                await viewModel.toggleFlash();
-                setState(() {});
-              },
               leading: IconButton(
                 onPressed: () async {
                   await viewModel.toggleFlash();

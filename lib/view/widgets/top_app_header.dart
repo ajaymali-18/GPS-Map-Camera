@@ -4,7 +4,7 @@ class TopAppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final Widget? leading;
   final Widget? trailing;
-  final VoidCallback? onFlashPressed;
+  final VoidCallback? onBackPressed;
   final VoidCallback? onSettingsPressed;
 
   const TopAppHeader({
@@ -12,7 +12,7 @@ class TopAppHeader extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.leading,
     this.trailing,
-    this.onFlashPressed,
+    this.onBackPressed,
     this.onSettingsPressed,
   });
 
@@ -29,13 +29,15 @@ class TopAppHeader extends StatelessWidget implements PreferredSizeWidget {
         color: Colors.transparent,
         child: Row(
           children: [
-            // Left Action / Flash
+            // Left Action / Back Button or Placeholder
             leading ??
-                IconButton(
-                  onPressed: onFlashPressed,
-                  icon: const Icon(Icons.bolt, color: Colors.white, size: 26),
-                  tooltip: 'Flash Toggle',
-                ),
+                (onBackPressed != null
+                    ? IconButton(
+                        onPressed: onBackPressed,
+                        icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                        tooltip: 'Back',
+                      )
+                    : const SizedBox(width: 48)),
 
             // Centered Title / Banner
             Expanded(

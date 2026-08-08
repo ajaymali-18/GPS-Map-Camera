@@ -181,7 +181,11 @@ class _LocationScreenState extends State<LocationScreen>
                     right: 0,
                     child: TopAppHeader(
                       title: '',
-                      onFlashPressed: () => Navigator.pop(context),
+                      leading: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
+                        tooltip: 'Back',
+                      ),
                       trailing: const SizedBox(width: 48),
                     ),
                   ),

@@ -43,7 +43,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
       backgroundColor: Colors.black,
       appBar: TopAppHeader(
         title: 'Photo Gallery',
-        onFlashPressed: () {
+        onBackPressed: () {
           Navigator.pop(context);
         },
         trailing: const SizedBox(width: 48),
