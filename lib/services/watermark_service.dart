@@ -22,21 +22,18 @@ class WatermarkService {
     }
 
     final photo = img.bakeOrientation(decoded);
-    final address = [
-      placemark?.street,
-      placemark?.subLocality,
-      placemark?.locality,
-      placemark?.administrativeArea,
-      placemark?.postalCode,
-      placemark?.country,
-    ].whereType<String>().where((part) => part.isNotEmpty).join(', ');
     final timestamp = DateTime.now();
+    final locationCityStateCountry =
+        AppFormatters.formatLocationCityStateCountry(placemark, position);
+    final fullAddress = AppFormatters.formatFullAddress(placemark, position);
+    final coords = AppFormatters.formatCoordinates(position);
+    final dateTimeStr = AppFormatters.formatCurrentDateTime(timestamp);
+
     final unwrappedLines = <String>[
-      'Location: ${placemark?.locality ?? 'Unknown'}, ${placemark?.country ?? ''}',
-      'Address: ${address.isEmpty ? 'Unavailable' : address}',
-      'Latitude: ${position == null ? '--' : position.latitude.toStringAsFixed(6)}',
-      'Longitude: ${position == null ? '--' : position.longitude.toStringAsFixed(6)}',
-      'Date: ${timestamp.toLocal().toString().split('.').first}',
+      locationCityStateCountry,
+      fullAddress,
+      coords,
+      dateTimeStr,
     ];
 
     const horizontalPadding = 36;
