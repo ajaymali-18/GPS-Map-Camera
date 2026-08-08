@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:my_app2/utils/formatters.dart';
 
 class LocationOverlayCard extends StatelessWidget {
   final Position? position;
@@ -131,132 +132,54 @@ class LocationOverlayCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Location: City, State, Country
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'Location: ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        TextSpan(
-                          text: locationCityStateCountry,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+                  // Line 1: City, State, Country 🇮🇳
+                  Text(
+                    locationCityStateCountry,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 12,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
 
-                  // Address: Full address (wrapping allowed)
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'Address: ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        TextSpan(
-                          text: fullAddressString,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+                  // Line 2 & 3: Full reverse-geocoded address
+                  Text(
+                    fullAddressString,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10.5,
+                      height: 1.25,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
 
-                  // Latitude
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'Latitude: ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        TextSpan(
-                          text: latStr,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ],
+                  // Line 4: Lat 19.986442° Long 73.748861°
+                  Text(
+                    position != null
+                        ? AppFormatters.formatCoordinates(position)
+                        : (latStr != '--' && lngStr != '--'
+                            ? 'Lat $latStr Long $lngStr'
+                            : 'Lat --° Long --°'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10.5,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
 
-                  // Longitude
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'Longitude: ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        TextSpan(
-                          text: lngStr,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-
-                  // Date & Time
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'Date & Time: ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                        TextSpan(
-                          text: currentDateTimeString,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+                  // Line 5: Saturday, 08/08/2026 11:44 AM GMT +05:30
+                  Text(
+                    currentDateTimeString,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10.5,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
