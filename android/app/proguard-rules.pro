@@ -21,9 +21,18 @@
 -keep class androidx.camera.** { *; }
 -dontwarn androidx.camera.**
 
-# Geolocator & Location
+# Geolocator, Geocoding & Location
 -keep class com.baseflow.geolocator.** { *; }
+-keep class com.baseflow.geocoding.** { *; }
 
 # Native EXIF & JNI
+-keep class com.cloudacy.native_exif.** { *; }
 -keep class com.baseflow.native_exif.** { *; }
+-keep class com.github.dart_lang.jni.** { *; }
+-keep class com.github.dart_lang.jni_flutter.** { *; }
+
+# Permission Handler
 -keep class com.baseflow.permissionhandler.** { *; }
+
+# Saver Gallery
+-keep class com.mhz.savegallery.saver_gallery.** { *; }

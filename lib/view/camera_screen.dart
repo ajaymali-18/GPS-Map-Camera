@@ -343,6 +343,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
               });
 
               final messenger = ScaffoldMessenger.of(context);
+              final previewSize = MediaQuery.of(context).size;
               var didSave = false;
 
               try {
@@ -371,12 +372,18 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                 swMap.stop();
                 debugPrint('⏱️ map snapshot total: ${swMap.elapsedMilliseconds} ms');
 
+                final isFrontCamera = viewModel.controller?.description.lensDirection ==
+                    CameraLensDirection.front;
+
                 final swWM = Stopwatch()..start();
                 final stampedPhoto = await watermarkService.createStampedPhoto(
                   image,
                   mapSnapshot,
                   placemark: placemark,
                   position: position,
+                  previewWidth: previewSize.width,
+                  previewHeight: previewSize.height,
+                  isFrontCamera: isFrontCamera,
                 );
                 swWM.stop();
                 debugPrint('⏱️ watermark total: ${swWM.elapsedMilliseconds} ms');

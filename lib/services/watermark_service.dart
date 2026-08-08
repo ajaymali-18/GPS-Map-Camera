@@ -15,6 +15,9 @@ class WatermarkService {
     img.Image? mapSnapshot, {
     Placemark? placemark,
     Position? position,
+    double? previewWidth,
+    double? previewHeight,
+    bool isFrontCamera = false,
   }) async {
     final swWMTotal = Stopwatch()..start();
 
@@ -56,8 +59,51 @@ class WatermarkService {
       }
 
       final swBake = Stopwatch()..start();
-      final photo = img.bakeOrientation(decoded);
+      var photo = img.bakeOrientation(decoded);
       swBake.stop();
+
+      // 3. Match camera preview horizontal mirroring for front camera
+      if (isFrontCamera) {
+        photo = img.flipHorizontal(photo);
+      }
+
+      // 4. Crop image to match camera preview aspect ratio 1:1
+      if (previewWidth != null &&
+          previewHeight != null &&
+          previewWidth > 0 &&
+          previewHeight > 0) {
+        final targetRatio = previewWidth / previewHeight;
+        final currentRatio = photo.width / photo.height;
+
+        if ((currentRatio - targetRatio).abs() > 0.001) {
+          int cropX = 0;
+          int cropY = 0;
+          int cropW = photo.width;
+          int cropH = photo.height;
+
+          if (currentRatio > targetRatio) {
+            // Photo is wider than preview aspect ratio -> crop horizontal sides
+            cropH = photo.height;
+            cropW = (photo.height * targetRatio).round().clamp(1, photo.width);
+            cropX = ((photo.width - cropW) / 2).round().clamp(0, photo.width - 1);
+            cropY = 0;
+          } else {
+            // Photo is taller than preview aspect ratio -> crop vertical sides
+            cropW = photo.width;
+            cropH = (photo.width / targetRatio).round().clamp(1, photo.height);
+            cropX = 0;
+            cropY = ((photo.height - cropH) / 2).round().clamp(0, photo.height - 1);
+          }
+
+          photo = img.copyCrop(
+            photo,
+            x: cropX,
+            y: cropY,
+            width: cropW,
+            height: cropH,
+          );
+        }
+      }
 
       final swRender = Stopwatch()..start();
       const horizontalPadding = 36;
